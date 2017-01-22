@@ -1,0 +1,102 @@
+#!/usr/bin/python
+
+DOCUMENTATION = '''
+---
+module: pcs_cluster
+short_description: wrapper module for 'pcs cluster setup' 
+description:
+     - module for creating and destroying clusters using 'pcs' utility
+version_added: "0.1"
+options:
+  state:
+    description:
+      - 'present' - ensure that cluster exists
+      - 'absent' - ensure cluster doesn't exist
+    required: false
+    default: present
+    choices: [present, absent]
+  node_list:
+    description:
+      - space separated list of nodes in cluster
+    required: false
+    default: null
+  cluster_name:
+    description:
+      - cluster name
+    required: true
+    default: null
+notes:
+   - ALPHA QUALITY: Not tested extensively
+requirements: [ ]
+author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+'''
+
+EXAMPLES = '''
+- name: Setup cluster
+  pcs_cluster: node_list="{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}" cluster_name="test-cluster"
+  run_once: true
+
+- name: Destroy cluster on each node
+  pcs_cluster: state='absent'
+
+'''
+
+## TODO detect if we are runnign cluster where we wanna create resources
+
+import os.path
+
+def main():
+        module = AnsibleModule(
+                argument_spec = dict(
+                        state=dict(default="present", choices=['present', 'absent']),
+                        node_list=dict(required=False),
+                        cluster_name=dict(required=False),
+                        #allow_rename=dict(required=False, default='no', type='bool'),
+                ),
+                supports_check_mode=True
+        )
+
+        state = module.params['state']
+        if state == 'present' and (not module.params['node_list'] or not module.params['cluster_name']):
+            module.fail_json(msg='When creating cluster you must specify both node_list and cluster_name')
+        result = {}
+
+        ## FIXME check if we have 'pcs' command
+        
+        # /var/lib/pacemaker/cib/cib.xml exists on cluster that were at least once started
+        cib_xml_exists = os.path.isfile('/var/lib/pacemaker/cib/cib.xml') 
+        ## EL 6 configuration file
+        cluster_conf_exists = os.path.isfile('/etc/cluster/cluster.conf') 
+        ## EL 7 configuration file
+        corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf') 
+        if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
+            result['changed'] = True
+            # create cluster from node list that was provided to module
+            cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s' % module.params
+            if not module.check_mode:
+                rc, out, err = module.run_command(cmd)
+                if rc == 0:
+                    module.exit_json(changed=True)
+                else:
+                    module.fail_json(msg='Failed to create cluster')
+        elif state == 'absent' and (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
+            result['changed'] = True
+            # destroy cluster on node where this module is executed
+            cmd = 'pcs cluster destroy'
+            if not module.check_mode:
+                rc, out, err = module.run_command(cmd)
+                if rc == 0:
+                    module.exit_json(changed=True)
+                else:
+                    module.fail_json(msg="Failed to delete cluster")
+        else:
+            result['changed'] = False
+            #FIXME not implemented yet
+            module.exit_json(changed=False)
+
+        ## END of module
+        module.exit_json(**result)
+
+# import module snippets
+from ansible.module_utils.basic import *
+main()

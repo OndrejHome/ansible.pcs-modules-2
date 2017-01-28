@@ -2,51 +2,48 @@
 
 DOCUMENTATION = '''
 ---
+author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
 module: pcs_auth
-short_description: pcs cluster auth module
+short_description: Module for interacting with 'pcs auth'
 description:
-     - module for authenticating nodes in pacemkaer cluster using 'pcs' for RHEL/CentOS.
-     This module is (de)authenticating nodes only 1-way == authenticating node 1 agains
-     node 2 doesn't mean that node 2 is authenticated agains node 1!
-version_added: "0.1"
+  - module for authenticating nodes in pacemaker cluster using 'pcs auth' for RHEL/CentOS.
+version_added: "2.0"
 options:
   state:
     description:
-      - 'present' - specified node should be authenticated
-      - 'absent' - specified node should not be authenticated
+    - "'present' authenticates the node while 'absent' will remove the node authentification"
+    - "node from which this is run is (de)authenticated agains the node specified in 'node_name'"
     required: false
     default: present
-    choices: [present, absent]
+    choices: [ 'present', 'absent' ]
   node_name:
     description:
-      - name of node for authentication
+      - hostname of node for authentication
     required: true
-    default: no
   username:
     description:
-      - username for cluster authentication
+      - "username of 'cluster user' for cluster authentication"
     required: false
-    default: hacluster
+    default: 'hacluster'
   password:
     description:
-      - password for cluster authentication
+      - "password of 'cluster user' for cluster authentication"
     required: false
-    default: no
 notes:
-   - tested on CentOS 6.8, 7.3
-requirements: [ ]
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+  - This module is (de)authenticating nodes only 1-way == authenticating node 1 agains
+    node 2 doesn't mean that node 2 is authenticated agains node 1!
+  - tested on CentOS 6.8, 7.3
 '''
 
 EXAMPLES = '''
 - name: Authorize node 'n1' with default user 'hacluster' and password 'testtest'
   pcs_auth: node_name='n1' password='testtest'
 
-- name: authorize all nodes in ansibleplay to each other
+- name: authorize all nodes in ansible play to each other
   pcs_auth: node_name="{{ hostvars[item]['ansible_hostname'] }}" password='testtest'
   with_items: "{{ play_hosts }}"
 
-- name: DEauthorize all nodes from each other in ansible play
+- name: de-authorize all nodes from each other in ansible play
   pcs_auth: node_name="{{  hostvars[item]['ansible_hostname'] }}" state='absent'
   with_items: "{{ play_hosts }}"
 

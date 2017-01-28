@@ -2,33 +2,30 @@
 
 DOCUMENTATION = '''
 ---
+author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
 module: pcs_cluster
-short_description: wrapper module for 'pcs cluster setup' 
+short_description: "wrapper module for 'pcs cluster setup' and 'pcs cluster destroy'"
 description:
-     - module for creating and destroying clusters using 'pcs' utility
-version_added: "0.1"
+  - "module for creating and destroying clusters using 'pcs' utility"
+version_added: "1.9"
 options:
   state:
     description:
-      - 'present' - ensure that cluster exists
-      - 'absent' - ensure cluster doesn't exist
+      - "'present' - ensure that cluster exists"
+      - "'absent' - ensure cluster doesn't exist"
     required: false
     default: present
-    choices: [present, absent]
+    choices: ['present', 'absent']
   node_list:
     description:
       - space separated list of nodes in cluster
     required: false
-    default: null
   cluster_name:
     description:
-      - cluster name
+      - pacemaker cluster name
     required: true
-    default: null
 notes:
-   - ALPHA QUALITY: Not tested extensively
-requirements: [ ]
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+   - Tested on CentOS 6.8, 7.3
 '''
 
 EXAMPLES = '''
@@ -38,7 +35,6 @@ EXAMPLES = '''
 
 - name: Destroy cluster on each node
   pcs_cluster: state='absent'
-
 '''
 
 ## TODO detect if we are runnign cluster where we wanna create resources

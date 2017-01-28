@@ -2,51 +2,46 @@
 
 DOCUMENTATION = '''
 ---
+author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
 module: pcs_constraint
-short_description: wrapper module for 'pcs constraint' 
+short_description: "wrapper module for 'pcs constraint'"
 description:
-     - module for creating and deleting clusters constraints using 'pcs' utility
-version_added: "0.1"
+  - "module for creating and deleting clusters constraints using 'pcs' utility"
+version_added: "2.0"
 options:
   state:
     description:
-      - 'present' - ensure that cluster constraint exists
-      - 'absent' - ensure cluster constraints doesn't exist
+      - "'present' - ensure that cluster constraint exists"
+      - "'absent' - ensure cluster constraints doesn't exist"
     required: false
     default: present
-    choices: [present, absent]
+    choices: ['present', 'absent']
   constraint_type:
     description:
       - type of the constraint
     required: true
-    default: null
-    choices: [order, location, colocation]
+    choices: ['order', 'location', 'colocation']
   resource1:
     description:
       - first resource for constraint
-      required: true
-      default: null
+    required: true
   resource2:
     description:
       - second resource for constraint (order and colocation constraints only)
     required: false
-    default: null
   node_name:
     description:
       - node for constraint (only for location constraint)
     required: false
-    default: null
   score:
     description:
       - constraint score in range -INFINITY..0..INFINITY
     required: false
-    default: INFINITY
+    default: 'INFINITY'
 notes:
    - tested on CentOS 7.3
    - no extra options allowed for constraints
-   - TODO: validation of resource names, node names, score values
-requirements: [ ]
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+   - "TODO: validation of resource names, node names, score values"
 '''
 
 EXAMPLES = '''

@@ -2,45 +2,41 @@
 
 DOCUMENTATION = '''
 ---
+author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
 module: pcs_resource
-short_description: wrapper module for 'pcs resource' 
+short_description: "wrapper module for 'pcs resource' "
 description:
-     - module for creating, deleting and updating clusters resources using 'pcs' utility
-version_added: "0.1"
+     - "module for creating, deleting and updating clusters resources using 'pcs' utility"
+version_added: "2.0"
 options:
   state:
     description:
-      - 'present' - ensure that cluster resource exists
-      - 'absent' - ensure cluster resource doesn't exist
+      - "'present' - ensure that cluster resource exists"
+      - "'absent' - ensure cluster resource doesn't exist"
     required: false
     default: present
-    choices: [present, absent]
+    choices: ['present', 'absent']
   name:
     description:
-      - name of cluster resource
+      - "name of cluster resource - cluster resource identifier"
     required: true
-    default: null
   resource_class:
     description:
-      - class of resource
-      required: true
-      default: ocf
-      choices: [ocf, systemd, stonith]
+      - class of cluster resource
+    required: true
+    default: 'ocf'
+    choices: ['ocf', 'systemd', 'stonith']
   resource_type:
     description:
       - cluster resource type
     required: false
-    default: null
   options:
     description:
-      - options for pcs
+      - "additional options passed to 'pcs' command"
     required: false
-    default: null
 notes:
    - tested on CentOS 6.8, 7.3
-   - no support for groups (yet)
-requirements: [ ]
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+   - "no support for groups, clones and more complex cluster resources (yet)"
 '''
 
 EXAMPLES = '''
@@ -104,8 +100,6 @@ def compare_resources(module, res1, res2):
             # if there was difference then show the diff
             n3_file = open(n3_tmp_path, 'r+')
             n4_file = open(n4_tmp_path, 'r+')
-            #n3_file.seek(0)
-            #n4_file.seek(0)
             diff = {
                 'before_header': '',
                 'before': to_native(b('').join(n3_file.readlines())),

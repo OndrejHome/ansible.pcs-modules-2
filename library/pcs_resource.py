@@ -182,7 +182,7 @@ def main():
 		clean_cib_root = clean_cib.getroot()
 		#clean_resource = clean_cib_root.find("./configuration/resources/primitive[@id='" + resource_name + "']") - Xpath doesn't work in python 2.6
                 clean_resource = None
-                clean_resources = clean_cib_root.find("./configuration/resources/primitive")
+                clean_resources = clean_cib_root.findall("./configuration/resources/primitive")
                 for clean_res in clean_resources:
                     if clean_res.attrib.get('id') == resource_name:
                         clean_resource = clean_res
@@ -207,7 +207,8 @@ def main():
                                 module.exit_json(changed=True)
                             else:
                                 module.fail_json(msg="Failed push updated configuration to cluster: " + out)
-
+                else:
+                    module.fail_json(msg="Unable to find simulated resource, this is most probably a bug.")
 	    else:
                 module.fail_json(msg="Unable to simulate resource with given definition: " + out)
 		 

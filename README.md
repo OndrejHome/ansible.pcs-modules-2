@@ -20,6 +20,8 @@ Provided Modules
 
 *pcs_resource* - create/update/delete cluster resources in pacemaker cluster including stonith resources
 
+*pcs_constraint* - create/delete cluster constraints in pacemaker cluster 
+
 *pcs_cluster* - create/destroy pacemaker cluster
 
 Example Playbook

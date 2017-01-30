@@ -36,7 +36,9 @@ options:
     required: false
 notes:
    - tested on CentOS 6.8, 7.3
-   - "no support for groups, clones and more complex cluster resources (yet)"
+   - module can create and delete clones, groups and master resources indirectly - 
+     resource can specify --clone, --group, --master option which will cause them to create
+     or become part of clone/group/master 
 '''
 
 EXAMPLES = '''
@@ -48,11 +50,17 @@ EXAMPLES = '''
 
 - name: ensure resource 'test2' of 'IPaddr2' type exists an has 5 second monitor interval
   pcs_resource: name='test2' resource_type='IPaddre2' options='ip=192.168.1.2 op monitor interval=5'
+
+- name: create resource in group 'testgrp'
+  pcs_resource: name='test3' resource_type='DUmmy' options='--group testgrp'
 '''
 
 ## TODO detect if we are runnign cluster where we want to create resources
 
 ## FIXME check if we have 'pcs' command
+
+## TODO if group exists and is not part of group, then specifying group won't put it into group
+# same problem is with clone and master - it might be better to make this functionality into separate module
 
 import os.path
 import xml.etree.ElementTree as ET
@@ -84,8 +92,8 @@ def compare_resources(module, res1, res2):
         ## normalize the files and store results in new files - this also removes some unimportant spaces and stuff
         n3_file_fd, n3_tmp_path = tempfile.mkstemp()
         n4_file_fd, n4_tmp_path = tempfile.mkstemp()
-        rc, out, err = module.run_command('xmllint --output ' + n3_tmp_path + ' ' + n1_tmp_path)
-        rc, out, err = module.run_command('xmllint --output ' + n4_tmp_path + ' ' + n2_tmp_path)
+        rc, out, err = module.run_command('xmllint --format --output ' + n3_tmp_path + ' ' + n1_tmp_path)
+        rc, out, err = module.run_command('xmllint --format --output ' + n4_tmp_path + ' ' + n2_tmp_path)
 
         ## addd files that should be cleaned up
         module.add_cleanup_file(n1_tmp_path)
@@ -107,6 +115,18 @@ def compare_resources(module, res1, res2):
                 'after': to_native(b('').join(n4_file.readlines())),
             }
         return rc, diff
+
+def find_resource(cib, resource_id):
+        my_resource = None
+        tags = [ 'group', 'clone', 'master', 'primitive' ]
+        for elem in list(cib):
+            if elem.attrib.get('id') == resource_id:
+                return elem
+            elif elem.tag in tags:
+                my_resource = find_resource(elem, resource_id)
+                if my_resource is not None:
+                    break
+        return my_resource
 
 def main():
         module = AnsibleModule(
@@ -135,13 +155,9 @@ def main():
             module.fail_json(msg='Failed to load current cluster configuration')
         
         ## try to find the resource that we seek
-        #resource = current_cib_root.find("./configuration/resources/primitive[@id='" + resource_name + "']") - Xpath doesn't work in python 2.6
         resource = None
-        resources = current_cib_root.findall("./configuration/resources/primitive")
-        for res in resources:
-            if res.attrib.get('id') == resource_name:
-                resource = res
-                break
+	cib_resources = current_cib_root.find('./configuration/resources')
+        resource = find_resource(cib_resources, resource_name)
 
         if state == 'present' and resource is None:
             # resource should be present, but we don't see it in configuration - lets create it
@@ -174,13 +190,10 @@ def main():
 		## we have a comparable resource created in clean cluster, so lets select it and compare it
 		clean_cib = ET.parse(clean_cib_path)	
 		clean_cib_root = clean_cib.getroot()
-		#clean_resource = clean_cib_root.find("./configuration/resources/primitive[@id='" + resource_name + "']") - Xpath doesn't work in python 2.6
-                clean_resource = None
-                clean_resources = clean_cib_root.findall("./configuration/resources/primitive")
-                for clean_res in clean_resources:
-                    if clean_res.attrib.get('id') == resource_name:
-                        clean_resource = clean_res
-                        break
+		clean_resource = None
+		cib_clean_resources = clean_cib_root.find('./configuration/resources')
+		clean_resource = find_resource(cib_clean_resources, resource_name)
+
 		if clean_resource is not None:
                     rc, diff = compare_resources(module, resource, clean_resource)
                     if rc == 0:

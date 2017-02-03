@@ -24,6 +24,11 @@ install:
 script:
   # Basic role syntax check 
   - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
+  # python syntax check of modules
+  - python -m py_compile library/pcs_auth.py
+  - python -m py_compile library/pcs_cluster.py
+  - python -m py_compile library/pcs_constraint.py
+  - python -m py_compile library/pcs_resource.py
 
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/

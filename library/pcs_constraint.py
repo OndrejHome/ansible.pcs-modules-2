@@ -58,12 +58,9 @@ EXAMPLES = '''
   pcs_constraint: constraint_type='location' resource1='resB' node_name='node2' score='-INFINITY'
 '''
 
-## TODO detect if we are runnign cluster where we want to create constraints
-
-## FIXME check if we have 'pcs' command
-
 import os.path
 import xml.etree.ElementTree as ET
+from distutils.spawn import find_executable
 
 def main():
         module = AnsibleModule(
@@ -90,6 +87,9 @@ def main():
         if constraint_type != 'location' and (not resource2):
             module.fail_json(msg='Order and colocation constraints requires resource2')
         result = {}
+
+        if find_executable('pcs') is None:
+            module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
         ## get running cluster configuration
         rc, out, err = module.run_command('pcs cluster cib')

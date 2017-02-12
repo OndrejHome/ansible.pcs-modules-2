@@ -55,16 +55,13 @@ EXAMPLES = '''
   pcs_resource: name='test3' resource_type='DUmmy' options='--group testgrp'
 '''
 
-## TODO detect if we are runnign cluster where we want to create resources
-
-## FIXME check if we have 'pcs' command
-
 ## TODO if group exists and is not part of group, then specifying group won't put it into group
 # same problem is with clone and master - it might be better to make this functionality into separate module
 
 import os.path
 import xml.etree.ElementTree as ET
 import tempfile
+from distutils.spawn import find_executable
 
 def replace_element(elem, replacement):
         elem.clear()
@@ -146,6 +143,9 @@ def main():
         if state == 'present' and (not module.params['resource_type']):
             module.fail_json(msg='When creating cluster resource you must specify the resource_type')
         result = {}
+
+        if find_executable('pcs') is None:
+            module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
         ## get running cluster configuration
         rc, out, err = module.run_command('pcs cluster cib')

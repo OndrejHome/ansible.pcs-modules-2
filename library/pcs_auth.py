@@ -51,6 +51,7 @@ EXAMPLES = '''
 
 import os.path
 import json
+from distutils.spawn import find_executable
 
 def main():
         module = AnsibleModule(
@@ -71,7 +72,8 @@ def main():
 
         result = {}
 
-        ## FIXME check if we have 'pcs' command
+        if find_executable('pcs') is None:
+            module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
 	if os.path.isfile('/var/lib/pcsd/tokens'):
 	    tokens_file = open('/var/lib/pcsd/tokens','r+')

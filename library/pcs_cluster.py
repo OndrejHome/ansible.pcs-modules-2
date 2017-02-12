@@ -37,9 +37,8 @@ EXAMPLES = '''
   pcs_cluster: state='absent'
 '''
 
-## TODO detect if we are runnign cluster where we wanna create resources
-
 import os.path
+from distutils.spawn import find_executable
 
 def main():
         module = AnsibleModule(
@@ -57,7 +56,8 @@ def main():
             module.fail_json(msg='When creating cluster you must specify both node_list and cluster_name')
         result = {}
 
-        ## FIXME check if we have 'pcs' command
+        if find_executable('pcs') is None:
+            module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
         
         # /var/lib/pacemaker/cib/cib.xml exists on cluster that were at least once started
         cib_xml_exists = os.path.isfile('/var/lib/pacemaker/cib/cib.xml') 

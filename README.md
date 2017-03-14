@@ -36,7 +36,7 @@ Example playbook for including modules in your playbook
 License
 -------
 
-GPLv3
+GPLv3 or Apache License 2.0, check LICENSE file for more information
 
 Author Information
 ------------------

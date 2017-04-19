@@ -168,6 +168,9 @@ def main():
                 else:
                     cmd='pcs resource create %(name)s %(resource_type)s %(options)s' % module.params
                 rc, out, err = module.run_command(cmd)
+                if rc != 0 and "Call cib_replace failed (-62): Timer expired" in err:
+                    # EL6: special retry when we failed to create resource because of timer waiting on cib expired
+                    rc, out, err = module.run_command(cmd)
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:

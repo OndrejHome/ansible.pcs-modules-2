@@ -24,6 +24,11 @@ options:
     description:
       - pacemaker cluster name
     required: true
+  token:
+    description:
+      - sets time in milliseconds until a token loss is declared after not receiving a token
+    required: false
+    default: 1000
 notes:
    - Tested on CentOS 6.8, 7.3
 '''
@@ -46,6 +51,7 @@ def main():
                         state=dict(default="present", choices=['present', 'absent']),
                         node_list=dict(required=False),
                         cluster_name=dict(required=False),
+                        token=dict(default=1000, required=False),
                         #allow_rename=dict(required=False, default='no', type='bool'),
                 ),
                 supports_check_mode=True
@@ -68,7 +74,7 @@ def main():
         if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # create cluster from node list that was provided to module
-            cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s' % module.params
+            cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s --token %(token)s' % module.params
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd)
                 if rc == 0:

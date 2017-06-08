@@ -22,6 +22,8 @@ Provided Modules
 
 *pcs_constraint* - create/delete cluster constraints in pacemaker cluster 
 
+*pcs_constraint_colocation* - create/delete cluster colocation constraints in pacemaker cluster
+
 *pcs_cluster* - create/destroy pacemaker cluster
 
 Example Playbook

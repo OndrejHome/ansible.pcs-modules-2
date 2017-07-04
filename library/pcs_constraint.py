@@ -91,6 +91,9 @@ def main():
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
+        if constraint_type == 'colocation' or constraint_type == 'order':
+            result["warnings"] = 'DEPRECATION: This module is deprecated for "' + constraint_type + '" constraint type! Use pcs_constraint_' + constraint_type + ' module instead.'
+
         ## get running cluster configuration
         rc, out, err = module.run_command('pcs cluster cib')
         if rc == 0:

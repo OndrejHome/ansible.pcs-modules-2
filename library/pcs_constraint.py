@@ -126,7 +126,7 @@ def main():
                     module.fail_json(msg="This should not happen")
                 rc, out, err = module.run_command(cmd)
                 if rc == 0:
-                    module.exit_json(changed=True)
+                    module.exit_json(**result)
                 else:
                     module.fail_json(msg="Failed to create constraint: " + out)
 
@@ -148,7 +148,7 @@ def main():
                             module.fail_json(msg="This should not happen")
                         rc, out, err = module.run_command(cmd)
                         if rc == 0:
-                            module.exit_json(changed=True)
+                            module.exit_json(**result)
                         else:
                             module.fail_json(msg="Failed to create constraint replacement: " + out)
                    
@@ -158,7 +158,7 @@ def main():
             if not module.check_mode:
                 rc, out, err = module.run_command('pcs constraint delete '+ constraint.attrib.get('id'))
                 if rc == 0:
-                    module.exit_json(changed=True)
+                    module.exit_json(**result)
                 else:
                     module.fail_json(msg="Failed to delete constraint: " + out)
         else:

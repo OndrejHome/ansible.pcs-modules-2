@@ -20,7 +20,9 @@ Provided Modules
 
 *pcs_resource* - create/update/delete cluster resources in pacemaker cluster including stonith resources
 
-*pcs_constraint* - create/delete cluster constraints in pacemaker cluster ('order' and 'colocation' functionality is deprecated and modules *pcs_constraint_colocation* and *pcs_constraint_order* should be used instead)
+*pcs_constraint* - DEPRECATED, will be removed in next version
+
+*pcs_constraint_location* - create/delete cluster location constraints in pacemaker cluster
 
 *pcs_constraint_colocation* - create/delete cluster colocation constraints in pacemaker cluster
 

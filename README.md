@@ -30,6 +30,8 @@ Provided Modules
 
 *pcs_cluster* - create/destroy pacemaker cluster
 
+*pcs_property* - set/unset pacemaker cluster properties
+
 Example Playbook
 ----------------
 

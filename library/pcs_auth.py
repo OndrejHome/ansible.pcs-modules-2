@@ -59,7 +59,7 @@ def main():
                         state=dict(default="present", choices=['present', 'absent']),
                         node_name=dict(required=True),
                         username=dict(required=False, default="hacluster"),
-                        password=dict(required=False)
+                        password=dict(required=False, no_log=True)
                 ),
                 supports_check_mode=True
         )

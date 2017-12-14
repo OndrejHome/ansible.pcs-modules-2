@@ -27,7 +27,10 @@ script:
   # python syntax check of modules
   - python -m py_compile library/pcs_auth.py
   - python -m py_compile library/pcs_cluster.py
-  - python -m py_compile library/pcs_constraint.py
+  - python -m py_compile library/pcs_constraint_colocation.py
+  - python -m py_compile library/pcs_constraint_location.py
+  - python -m py_compile library/pcs_constraint_order.py
+  - python -m py_compile library/pcs_property.py
   - python -m py_compile library/pcs_resource.py
 
 notifications:

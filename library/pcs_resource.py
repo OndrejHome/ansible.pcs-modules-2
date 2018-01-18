@@ -174,7 +174,7 @@ def main():
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:
-                    module.fail_json(msg="Failed to create resource: " + out)
+                    module.fail_json(msg="Failed to create resource: " + out + err)
 
         elif state == 'present' and resource is not None:
             # resource should be present and we have find resource with such ID - lets compare it with definition if it needs a change

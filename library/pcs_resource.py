@@ -42,17 +42,17 @@ notes:
 '''
 
 EXAMPLES = '''
-- name: ensure Dummy resource with name 'test' is present
-  pcs_resource: name='test' resource_type='Dummy'
+- name: ensure Dummy('ocf:pacemaker:Dummy') resource with name 'test' is present
+  pcs_resource: name='test' resource_type='ocf:pacemaker:Dummy'
 
 - name: ensure that resource with name 'vip' is not present
   pcs_resource: name='vip' state='absent'
 
-- name: ensure resource 'test2' of 'IPaddr2' type exists an has 5 second monitor interval
-  pcs_resource: name='test2' resource_type='IPaddre2' options='ip=192.168.1.2 op monitor interval=5'
+- name: ensure resource 'test2' of IPaddr2('ocf:heartbeat:IPaddr2') type exists an has 5 second monitor interval
+  pcs_resource: name='test2' resource_type='ocf:heartbeat:IPaddr2' options='ip=192.168.1.2 op monitor interval=5'
 
 - name: create resource in group 'testgrp'
-  pcs_resource: name='test3' resource_type='DUmmy' options='--group testgrp'
+  pcs_resource: name='test3' resource_type='ocf:pacemaker:Dummy' options='--group testgrp'
 '''
 
 ## TODO if group exists and is not part of group, then specifying group won't put it into group

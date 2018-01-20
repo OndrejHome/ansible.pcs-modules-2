@@ -132,7 +132,7 @@ def main():
                         name=dict(required=True),
                         resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
                         resource_type=dict(required=False),
-                        options=dict(required=False),
+                        options=dict(default="", required=False),
                 ),
                 supports_check_mode=True
         )

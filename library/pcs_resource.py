@@ -174,7 +174,7 @@ def main():
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:
-                    module.fail_json(msg="Failed to create resource: " + out)
+                    module.fail_json(msg="Failed to create resource using command '" + cmd + "'", output=out, error=err)
 
         elif state == 'present' and resource is not None:
             # resource should be present and we have find resource with such ID - lets compare it with definition if it needs a change
@@ -212,15 +212,16 @@ def main():
                             new_cib_fd, new_cib_path = tempfile.mkstemp()
                             module.add_cleanup_file(new_cib_path)
                             new_cib.write(new_cib_path)
-                            rc, out, err = module.run_command('pcs cluster cib-push ' + new_cib_path)
+                            push_cmd = 'pcs cluster cib-push ' + new_cib_path
+                            rc, out, err = module.run_command(push_cmd)
                             if rc == 0:
                                 module.exit_json(changed=True)
                             else:
-                                module.fail_json(msg="Failed push updated configuration to cluster: " + out)
+                                module.fail_json(msg="Failed to push updated configuration to cluster using command '" + push_cmd + "'", output=out, error=err)
                 else:
-                    module.fail_json(msg="Unable to find simulated resource, this is most probably a bug.")
+                    module.fail_json(msg="Unable to find simulated resource, This is most probably a bug.")
             else:
-                module.fail_json(msg="Unable to simulate resource with given definition: " + out)
+                module.fail_json(msg="Unable to simulate resource with given definition using command '" + cmd + "'", output=out, error=err)
 
         elif state == 'absent' and resource is not None:
             # resource should not be present but we have found something - lets remove that
@@ -234,7 +235,7 @@ def main():
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:
-                    module.fail_json(msg="Failed to delete resource: " + out)
+                    module.fail_json(msg="Failed to delete resource using command '" + cmd + "'", output=out, error=err)
 
         else:
             # resource should not be present and is nto there, nothing to do

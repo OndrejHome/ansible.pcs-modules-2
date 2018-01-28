@@ -63,6 +63,14 @@ import xml.etree.ElementTree as ET
 import tempfile
 from distutils.spawn import find_executable
 
+# determine if we have 'to_native' function that we can use for 'ansible --diff' output
+to_native_support = False
+try:
+        from ansible.module_utils._text import to_native
+        to_native_support = True
+except ImportError:
+        pass
+
 def replace_element(elem, replacement):
         elem.clear()
         elem.text = replacement.text
@@ -105,12 +113,16 @@ def compare_resources(module, res1, res2):
             # if there was difference then show the diff
             n3_file = open(n3_tmp_path, 'r+')
             n4_file = open(n4_tmp_path, 'r+')
-            diff = {
-                'before_header': '',
-                'before': to_native(b('').join(n3_file.readlines())),
-                'after_header': '',
-                'after': to_native(b('').join(n4_file.readlines())),
-            }
+            if to_native_support:
+                # produce diff only where we have to_native function which give sensible output
+                # without 'to_native' whole text is wrapped as single line and not diffed
+                # seems that to_native was added in ansible-2.2 (commit 57701d7)
+                diff = {
+                    'before_header': '',
+                    'before': to_native(b('').join(n3_file.readlines())),
+                    'after_header': '',
+                    'after': to_native(b('').join(n4_file.readlines())),
+                }
         return rc, diff
 
 def find_resource(cib, resource_id):

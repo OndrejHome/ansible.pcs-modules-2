@@ -42,17 +42,17 @@ notes:
 '''
 
 EXAMPLES = '''
-- name: ensure Dummy resource with name 'test' is present
-  pcs_resource: name='test' resource_type='Dummy'
+- name: ensure Dummy('ocf:pacemaker:Dummy') resource with name 'test' is present
+  pcs_resource: name='test' resource_type='ocf:pacemaker:Dummy'
 
 - name: ensure that resource with name 'vip' is not present
   pcs_resource: name='vip' state='absent'
 
-- name: ensure resource 'test2' of 'IPaddr2' type exists an has 5 second monitor interval
-  pcs_resource: name='test2' resource_type='IPaddre2' options='ip=192.168.1.2 op monitor interval=5'
+- name: ensure resource 'test2' of IPaddr2('ocf:heartbeat:IPaddr2') type exists an has 5 second monitor interval
+  pcs_resource: name='test2' resource_type='ocf:heartbeat:IPaddr2' options='ip=192.168.1.2 op monitor interval=5'
 
 - name: create resource in group 'testgrp'
-  pcs_resource: name='test3' resource_type='DUmmy' options='--group testgrp'
+  pcs_resource: name='test3' resource_type='ocf:pacemaker:Dummy' options='--group testgrp'
 '''
 
 ## TODO if group exists and is not part of group, then specifying group won't put it into group
@@ -72,16 +72,16 @@ def replace_element(elem, replacement):
         elem[:] = replacement[:] 
 
 def compare_resources(module, res1, res2):
-	# we now have 2 nodes that we can compare, so lets dump them into files for comparring
+        # we now have 2 nodes that we can compare, so lets dump them into files for comparring
         n1_file_fd, n1_tmp_path = tempfile.mkstemp()
         n2_file_fd, n2_tmp_path = tempfile.mkstemp()
         n1_file = open(n1_tmp_path, 'w')
         n2_file = open(n2_tmp_path, 'w')
         ## dump the XML resource definitions into temporary files
         sys.stdout = n1_file
-	ET.dump(res1)
+        ET.dump(res1)
         sys.stdout = n2_file
-	ET.dump(res2)
+        ET.dump(res2)
         sys.stdout = sys.__stdout__
         ##
         n1_file.close()
@@ -132,7 +132,7 @@ def main():
                         name=dict(required=True),
                         resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
                         resource_type=dict(required=False),
-                        options=dict(required=False),
+                        options=dict(default="", required=False),
                 ),
                 supports_check_mode=True
         )
@@ -156,7 +156,7 @@ def main():
         
         ## try to find the resource that we seek
         resource = None
-	cib_resources = current_cib_root.find('./configuration/resources')
+        cib_resources = current_cib_root.find('./configuration/resources')
         resource = find_resource(cib_resources, resource_name)
 
         if state == 'present' and resource is None:
@@ -174,30 +174,30 @@ def main():
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:
-                    module.fail_json(msg="Failed to create resource: " + out)
+                    module.fail_json(msg="Failed to create resource using command '" + cmd + "'", output=out, error=err)
 
         elif state == 'present' and resource is not None:
             # resource should be present and we have find resource with such ID - lets compare it with definition if it needs a change
 
-	    # lets simulate how the resource would look like if it was created using command we have
-	    clean_cib_fd, clean_cib_path = tempfile.mkstemp() 
-	    module.add_cleanup_file(clean_cib_path)
-	    module.do_cleanup_files()
+            # lets simulate how the resource would look like if it was created using command we have
+            clean_cib_fd, clean_cib_path = tempfile.mkstemp()
+            module.add_cleanup_file(clean_cib_path)
+            module.do_cleanup_files()
             # we must be sure that clean_cib_path is empty
             if resource_class == 'stonith':
                 cmd = 'pcs -f ' + clean_cib_path + ' stonith create %(name)s %(resource_type)s %(options)s' % module.params
             else:
                 cmd = 'pcs -f ' + clean_cib_path + ' resource create %(name)s %(resource_type)s %(options)s' % module.params
             rc, out, err = module.run_command(cmd)
-	    if rc == 0:
-		## we have a comparable resource created in clean cluster, so lets select it and compare it
-		clean_cib = ET.parse(clean_cib_path)	
-		clean_cib_root = clean_cib.getroot()
-		clean_resource = None
-		cib_clean_resources = clean_cib_root.find('./configuration/resources')
-		clean_resource = find_resource(cib_clean_resources, resource_name)
+            if rc == 0:
+                ## we have a comparable resource created in clean cluster, so lets select it and compare it
+                clean_cib = ET.parse(clean_cib_path)
+                clean_cib_root = clean_cib.getroot()
+                clean_resource = None
+                cib_clean_resources = clean_cib_root.find('./configuration/resources')
+                clean_resource = find_resource(cib_clean_resources, resource_name)
 
-		if clean_resource is not None:
+                if clean_resource is not None:
                     rc, diff = compare_resources(module, resource, clean_resource)
                     if rc == 0:
                         # if no differnces were find there is no need to update the resource
@@ -212,17 +212,17 @@ def main():
                             new_cib_fd, new_cib_path = tempfile.mkstemp()
                             module.add_cleanup_file(new_cib_path)
                             new_cib.write(new_cib_path)
-                            rc, out, err = module.run_command('pcs cluster cib-push ' + new_cib_path)
+                            push_cmd = 'pcs cluster cib-push ' + new_cib_path
+                            rc, out, err = module.run_command(push_cmd)
                             if rc == 0:
                                 module.exit_json(changed=True)
                             else:
-                                module.fail_json(msg="Failed push updated configuration to cluster: " + out)
+                                module.fail_json(msg="Failed to push updated configuration to cluster using command '" + push_cmd + "'", output=out, error=err)
                 else:
-                    module.fail_json(msg="Unable to find simulated resource, this is most probably a bug.")
-	    else:
-                module.fail_json(msg="Unable to simulate resource with given definition: " + out)
-		 
-                   
+                    module.fail_json(msg="Unable to find simulated resource, This is most probably a bug.")
+            else:
+                module.fail_json(msg="Unable to simulate resource with given definition using command '" + cmd + "'", output=out, error=err)
+
         elif state == 'absent' and resource is not None:
             # resource should not be present but we have found something - lets remove that
             result['changed'] = True
@@ -235,7 +235,7 @@ def main():
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:
-                    module.fail_json(msg="Failed to delete resource: " + out)
+                    module.fail_json(msg="Failed to delete resource using command '" + cmd + "'", output=out, error=err)
 
         else:
             # resource should not be present and is nto there, nothing to do

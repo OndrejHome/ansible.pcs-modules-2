@@ -59,7 +59,7 @@ def main():
                         state=dict(default="present", choices=['present', 'absent']),
                         node_name=dict(required=True),
                         username=dict(required=False, default="hacluster"),
-                        password=dict(required=False)
+                        password=dict(required=False, no_log=True)
                 ),
                 supports_check_mode=True
         )
@@ -75,10 +75,10 @@ def main():
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
-	if os.path.isfile('/var/lib/pcsd/tokens'):
-	    tokens_file = open('/var/lib/pcsd/tokens','r+')
-	    # load JSON tokens
-	    tokens_data = json.load(tokens_file)
+        if os.path.isfile('/var/lib/pcsd/tokens'):
+            tokens_file = open('/var/lib/pcsd/tokens','r+')
+            # load JSON tokens
+            tokens_data = json.load(tokens_file)
 
         rc, out, err = module.run_command('pcs cluster pcsd-status %(node_name)s' % module.params)
 
@@ -94,12 +94,12 @@ def main():
         elif state == 'absent' and tokens_data and tokens_data['tokens'].has_key(node_name):
             result['changed'] = True
             if not module.check_mode:
-		del tokens_data['tokens'][node_name]
-		tokens_data['data_version'] += 1
-		# write the change into token file
-		tokens_file.seek(0)
-		json.dump(tokens_data,tokens_file,indent=4)
-		tokens_file.truncate()
+                del tokens_data['tokens'][node_name]
+                tokens_data['data_version'] += 1
+                # write the change into token file
+                tokens_file.seek(0)
+                json.dump(tokens_data,tokens_file,indent=4)
+                tokens_file.truncate()
         else:
             result['changed'] = False
             module.exit_json(changed=False)

@@ -31,6 +31,7 @@ options:
     default: 1000
 notes:
    - Tested on CentOS 6.8, 7.3
+   - Tested on Red Hat Enterprise Linux 7.3, 7.4
 '''
 
 EXAMPLES = '''

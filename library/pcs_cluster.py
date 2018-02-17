@@ -28,14 +28,26 @@ options:
     description:
       - sets time in milliseconds until a token loss is declared after not receiving a token
     required: false
+  transport:
+    description:
+      - "'default' - use default transport protocol ('udp' in CentOS/RHEL 6, 'udpu' in CentOS/RHEL 7)"
+      - "'udp' - use UDP multicast protocol"
+      - "'udpu' - use UDP unicast protocol"
+    required: false
+    default: default
+    choices: ['default', 'udp', 'udpu']
 notes:
-   - Tested on CentOS 6.8, 7.3
+   - Tested on CentOS 6.8, 6.9, 7.3, 7.4
    - Tested on Red Hat Enterprise Linux 7.3, 7.4
 '''
 
 EXAMPLES = '''
 - name: Setup cluster
   pcs_cluster: node_list="{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}" cluster_name="test-cluster"
+  run_once: true
+
+- name: Create cluster with totem token timeout of 5000 ms and UDP unicast transport protocol
+  pcs_cluster: node_list="{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}" cluster_name="test-cluster" token=5000 transport='udpu'
   run_once: true
 
 - name: Destroy cluster on each node
@@ -52,6 +64,7 @@ def main():
                         node_list=dict(required=False),
                         cluster_name=dict(required=False),
                         token=dict(required=False, type='int'),
+                        transport=dict(required=False, default="default", choices=['default','udp','udpu']),
                         #allow_rename=dict(required=False, default='no', type='bool'),
                 ),
                 supports_check_mode=True
@@ -74,10 +87,9 @@ def main():
         if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # create cluster from node list that was provided to module
-            if not module.params['token']:
-                cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s' % module.params
-            else:
-                cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s --token %(token)s' % module.params
+            module.params['token_param'] = '' if (not module.params['token']) else '--token %(token)s' % module.params
+            module.params['transport_param'] = '' if (module.params['transport'] == 'default') else '--transport %(transport)s' % module.params
+            cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd)
                 if rc == 0:

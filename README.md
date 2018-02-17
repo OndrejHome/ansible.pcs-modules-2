@@ -30,6 +30,8 @@ Provided Modules
 
 *pcs_property* - set/unset pacemaker cluster properties
 
+*pcs_resource_defaults* - set/unset resource defaults and resource operation defaults
+
 Example Playbook
 ----------------
 

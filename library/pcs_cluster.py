@@ -83,7 +83,7 @@ def main():
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:
-                    module.fail_json(msg='Failed to create cluster')
+                    module.fail_json(msg="Failed to create cluster using command '" + cmd + "'", output=out, error=err)
         elif state == 'absent' and (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # destroy cluster on node where this module is executed
@@ -93,7 +93,7 @@ def main():
                 if rc == 0:
                     module.exit_json(changed=True)
                 else:
-                    module.fail_json(msg="Failed to delete cluster")
+                    module.fail_json(msg="Failed to delete cluster using command '" + cmd + "'", output=out, error=err)
         else:
             result['changed'] = False
             #FIXME not implemented yet

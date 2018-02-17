@@ -53,6 +53,9 @@ EXAMPLES = '''
 
 - name: create resource in group 'testgrp'
   pcs_resource: name='test3' resource_type='ocf:pacemaker:Dummy' options='--group testgrp'
+
+- name: create complex Master/Slave resource 'test-master' of 'ocf:pacemaker:Dummy' type
+  pcs_resource: name="test" resource_type="ocf:pacemaker:Dummy" options="fake=some_value --master meta master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true op monitor interval=60s meta resource-stickiness=100"
 '''
 
 ## TODO if group exists and is not part of group, then specifying group won't put it into group

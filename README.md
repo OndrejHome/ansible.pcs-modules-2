@@ -1,7 +1,9 @@
 pcs-modules-2
 =============
 
-Modules for configuring pacemaker cluster on CentOS/RHEL 6/7 systems.
+Ansible modules for configuring pacemaker cluster on CentOS/RHEL 6/7 systems.
+
+If you are looking for a role that will configure a basic pacemaker cluster on CentOS/RHEL 6/7 systems, then check out the [OndrejHome.ha-cluster-pacemaker](https://github.com/OndrejHome/ansible.ha-cluster-pacemaker) role that uses the pcs-modules-2.
 
 Requirements
 ------------
@@ -41,6 +43,10 @@ Example playbook for including modules in your playbook
       roles:
          - { role: OndrejHome.pcs-modules-2 }
 
+Use the `ansible-doc` command to get more information about each module and to see examples of its use.
+
+    ansible-doc -M library/ pcs_resource
+
 License
 -------
 
@@ -49,6 +55,6 @@ GPLv3 or Apache License 2.0, check LICENSE file for more information
 Author Information
 ------------------
 
-WARNING: This was not tested extensively and may brake. Recommended use is for testing only.
+WARNING: Despite the modules are used by the Author regularly they are tested only manually
 
 To get in touch with author you can use email ondrej-xa2iel8u@famera.cz or create a issue on github when requesting some feature.

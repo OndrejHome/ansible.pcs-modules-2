@@ -125,6 +125,10 @@ def main():
         else:
             cmd_create='pcs constraint colocation add %(resource1)s with %(resource2)s %(score)s' % module.params
 
+        # colocation constraint deletion command
+        if constraint is not None:
+            cmd_delete = 'pcs constraint delete '+ constraint.attrib.get('id')
+
         if state == 'present' and constraint is None:
             # constraint should be present, but we don't see it in configuration - lets create it
             result['changed'] = True
@@ -140,9 +144,9 @@ def main():
             if constraint.attrib.get('score') != score or (role1 is not None and role1 != detected_role1) or (role2 is not None and role2 != detected_role2):
                 result['changed'] = True
                 if not module.check_mode:
-                    rc, out, err = module.run_command('pcs constraint delete '+ constraint.attrib.get('id'))
+                    rc, out, err = module.run_command(cmd_delete)
                     if rc != 0:
-                        module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd + "'", output=out, error=err)
+                        module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd_delete + "'", output=out, error=err)
                     else:
                         rc, out, err = module.run_command(cmd_create)
                         if rc == 0:
@@ -154,11 +158,11 @@ def main():
             # constraint should not be present but we have found something - lets remove that
             result['changed'] = True
             if not module.check_mode:
-                rc, out, err = module.run_command('pcs constraint delete '+ constraint.attrib.get('id'))
+                rc, out, err = module.run_command(cmd_delete)
                 if rc == 0:
                     module.exit_json(**result)
                 else:
-                    module.fail_json(msg="Failed to delete constraint with cmd: '" + cmd + "'", output=out, error=err)
+                    module.fail_json(msg="Failed to delete constraint with cmd: '" + cmd_delete + "'", output=out, error=err)
         else:
             # constraint should not be present and is not there, nothing to do
             result['changed'] = False

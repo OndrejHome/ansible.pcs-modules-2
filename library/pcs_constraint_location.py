@@ -85,6 +85,10 @@ def main():
         # location constraint creation command
         cmd_create='pcs constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
 
+        # location constraint deletion command
+        if constraint is not None:
+            cmd_delete = 'pcs constraint delete ' % module.params + constraint.attrib.get('id')
+
         if state == 'present' and constraint is None:
             # constraint should be present, but we don't see it in configuration - lets create it
             result['changed'] = True
@@ -100,9 +104,9 @@ def main():
             if score != constraint.attrib.get('score'):
                 result['changed'] = True
                 if not module.check_mode:
-                    rc, out, err = module.run_command('pcs constraint delete '+ constraint.attrib.get('id'))
+                    rc, out, err = module.run_command(cmd_delete)
                     if rc != 0:
-                        module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd + "'", output=out, error=err)
+                        module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd_delete + "'", output=out, error=err)
                     else:
                         rc, out, err = module.run_command(cmd_create)
                         if rc == 0:
@@ -114,11 +118,11 @@ def main():
             # constraint should not be present but we have found something - lets remove that
             result['changed'] = True
             if not module.check_mode:
-                rc, out, err = module.run_command('pcs constraint delete '+ constraint.attrib.get('id'))
+                rc, out, err = module.run_command(cmd_delete)
                 if rc == 0:
                     module.exit_json(**result)
                 else:
-                    module.fail_json(msg="Failed to delete constraint with cmd: '" + cmd + "'", output=out, error=err)
+                    module.fail_json(msg="Failed to delete constraint with cmd: '" + cmd_delete + "'", output=out, error=err)
         else:
             # constraint should not be present and is not there, nothing to do
             result['changed'] = False

@@ -6,7 +6,8 @@ author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
 module: pcs_resource
 short_description: "wrapper module for 'pcs resource' "
 description:
-     - "module for creating, deleting and updating clusters resources using 'pcs' utility"
+     - "Module for creating, deleting and updating clusters resources using 'pcs' utility."
+     - "This module should be executed for same resorce only on one of the nodes in cluster at a time."
 version_added: "2.0"
 options:
   state:
@@ -34,6 +35,12 @@ options:
     description:
       - "additional options passed to 'pcs' command"
     required: false
+  force_resource_update:
+    description:
+      - "skip checking for cluster changes when updating existing resource configuration - use 'scope=resources' when pushing the change to cluster. Useful in busy clusters, dangerous when there are concurent updates as they can be lost."
+    required: false
+    default: no
+    type: bool
 notes:
    - tested on CentOS 6.8, 7.3
    - module can create and delete clones, groups and master resources indirectly - 
@@ -148,6 +155,7 @@ def main():
                         resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
                         resource_type=dict(required=False),
                         options=dict(default="", required=False),
+                        force_resource_update=dict(default=False, type=bool, required=False),
                 ),
                 supports_check_mode=True
         )
@@ -227,7 +235,8 @@ def main():
                             new_cib_fd, new_cib_path = tempfile.mkstemp()
                             module.add_cleanup_file(new_cib_path)
                             new_cib.write(new_cib_path)
-                            push_cmd = 'pcs cluster cib-push ' + new_cib_path
+                            push_scope = 'scope=resources' if module.params['force_resource_update'] else ''
+                            push_cmd = 'pcs cluster cib-push ' + push_scope + ' ' + new_cib_path
                             rc, out, err = module.run_command(push_cmd)
                             if rc == 0:
                                 module.exit_json(changed=True)

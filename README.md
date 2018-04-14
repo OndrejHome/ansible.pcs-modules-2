@@ -5,6 +5,8 @@ Ansible modules for configuring pacemaker cluster on CentOS/RHEL 6/7 systems.
 
 If you are looking for a role that will configure a basic pacemaker cluster on CentOS/RHEL 6/7 systems, then check out the [OndrejHome.ha-cluster-pacemaker](https://github.com/OndrejHome/ansible.ha-cluster-pacemaker) role that uses the pcs-modules-2.
 
+Note that modules manipulating with cluster configuration such as `pcs_resource`, `pcs_constraint_*`, `pcs_property` and `pcs_resource_defaults` should be run only from one of the cluster nodes in cluster by using either `run_once: True` or `delegate_to:` options.
+
 Requirements
 ------------
 

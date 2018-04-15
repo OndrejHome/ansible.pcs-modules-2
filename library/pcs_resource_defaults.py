@@ -31,6 +31,10 @@ options:
     description:
       - value of cluster resource default
     required: false
+  cib_file:
+    description:
+      - "Apply changes to specified file containing cluster CIB instead of running cluster."
+    required: false
 notes:
    - tested on CentOS 7.4
 '''
@@ -58,6 +62,7 @@ def main():
                         defaults_type=dict(required=False, default="meta", choices=['meta', 'op']),
                         name=dict(required=True),
                         value=dict(required=False),
+                        cib_file=dict(required=False),
                 ),
                 supports_check_mode=True
         )
@@ -66,6 +71,7 @@ def main():
         name = module.params['name']
         defaults_type = module.params['defaults_type']
         value = module.params['value']
+        cib_file = module.params['cib_file']
 
         result = {}
 
@@ -75,11 +81,15 @@ def main():
         if state == 'present' and value is None:
             module.fail_json(msg="To set a defaults 'value' must be specified.")
 
+        module.params['cib_file_param'] = ''
+        if cib_file is not None and os.path.isfile(cib_file):
+            module.params['cib_file_param'] = '-f ' + cib_file
+
         ## get defaults list from running cluster
         if defaults_type == 'meta':
-            rc, out, err = module.run_command('pcs resource defaults')
+            rc, out, err = module.run_command('pcs %(cib_file_param)s resource defaults' % module.params)
         elif defaults_type == 'op':
-            rc, out, err = module.run_command('pcs resource op defaults')
+            rc, out, err = module.run_command('pcs %(cib_file_param)s resource op defaults' % module.params)
         else:
             module.fail_json(msg="'"+defaults_type+"' is not implemented by this module")
 
@@ -100,9 +110,9 @@ def main():
             result['changed'] = True
             if not module.check_mode:
                 if defaults_type == 'meta':
-                    cmd_set = 'pcs resource defaults %(name)s=%(value)s' % module.params
+                    cmd_set = 'pcs %(cib_file_param)s resource defaults %(name)s=%(value)s' % module.params
                 elif defaults_type == 'op':
-                    cmd_set = 'pcs resource op defaults %(name)s=%(value)s' % module.params
+                    cmd_set = 'pcs %(cib_file_param)s resource op defaults %(name)s=%(value)s' % module.params
                 else:
                     module.fail_json(msg="'"+defaults_type+"' is not implemented by this module")
                 rc, out, err = module.run_command(cmd_set)
@@ -116,9 +126,9 @@ def main():
             result['changed'] = True
             if not module.check_mode:
                 if defaults_type == 'meta':
-                    cmd_unset = 'pcs resource defaults %(name)s=' % module.params
+                    cmd_unset = 'pcs %(cib_file_param)s resource defaults %(name)s=' % module.params
                 elif defaults_type == 'op':
-                    cmd_unset = 'pcs resource op defaults %(name)s=' % module.params
+                    cmd_unset = 'pcs %(cib_file_param)s resource op defaults %(name)s=' % module.params
                 else:
                     module.fail_json(msg="'"+defaults_type+"' is not implemented by this module")
                 rc, out, err = module.run_command(cmd_unset)

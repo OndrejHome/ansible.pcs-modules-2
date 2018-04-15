@@ -24,6 +24,10 @@ options:
     description:
       - value of cluster property
     required: false
+  cib_file:
+    description:
+      - "Apply changes to specified file containing cluster CIB instead of running cluster."
+    required: false
 notes:
    - tested on CentOS 7.3
 '''
@@ -44,6 +48,7 @@ def main():
                         state=dict(default="present", choices=['present', 'absent']),
                         name=dict(required=True),
                         value=dict(required=False),
+                        cib_file=dict(required=False),
                 ),
                 supports_check_mode=True
         )
@@ -51,6 +56,7 @@ def main():
         state = module.params['state']
         name = module.params['name']
         value = module.params['value']
+        cib_file = module.params['cib_file']
 
         result = {}
 
@@ -60,8 +66,12 @@ def main():
         if state == 'present' and value is None:
             module.fail_json(msg="To set property 'value' must be specified.")
            
+        module.params['cib_file_param'] = ''
+        if cib_file is not None and os.path.isfile(cib_file):
+            module.params['cib_file_param'] = '-f ' + cib_file
+
         ## get property list from running cluster
-        rc, out, err = module.run_command('pcs property show')
+        rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
         properties={}
         if rc == 0:
             # we are stripping first and last line as they doesn't contain properties
@@ -77,7 +87,7 @@ def main():
             # property not found or having a different value
             result['changed'] = True
             if not module.check_mode:
-                cmd_set = 'pcs property set %(name)s=%(value)s' % module.params
+                cmd_set = 'pcs %(cib_file_param)s property set %(name)s=%(value)s' % module.params
                 rc, out, err = module.run_command(cmd_set)
                 if rc == 0:
                     module.exit_json(**result)
@@ -88,7 +98,7 @@ def main():
             # property found but it should not be set
             result['changed'] = True
             if not module.check_mode:
-                cmd_unset = 'pcs property unset %(name)s' % module.params
+                cmd_unset = 'pcs %(cib_file_param)s property unset %(name)s' % module.params
                 rc, out, err = module.run_command(cmd_unset)
                 if rc == 0:
                     module.exit_json(**result)

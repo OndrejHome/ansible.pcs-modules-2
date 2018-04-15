@@ -48,6 +48,11 @@ options:
     required: false
     choices: ['true','false']
     default: 'true'
+  cib_file:
+    description:
+      - "Apply changes to specified file containing cluster CIB instead of running cluster."
+      - "This module requires the file to already contain cluster configuration."
+    required: false
 notes:
    - tested on CentOS 7.3
 '''
@@ -83,6 +88,7 @@ def main():
                         resource2_action=dict(required=False, choices=['start', 'promote', 'demote', 'stop'], default='start'),
                         kind=dict(required=False, choices=['Optional', 'Mandatory', 'Serialize'], default='Mandatory'),
                         symmetrical=dict(required=False, choices=['true', 'false'], default='true'),
+                        cib_file=dict(required=False),
                 ),
                 supports_check_mode=True
         )
@@ -94,18 +100,32 @@ def main():
         resource2_action = module.params['resource2_action']
         kind = module.params['kind']
         symmetrical = module.params['symmetrical']
+        cib_file = module.params['cib_file']
 
         result = {}
 
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
-        ## get running cluster configuration
-        rc, out, err = module.run_command('pcs cluster cib')
-        if rc == 0:
-            current_cib_root = ET.fromstring(out)
+        module.params['cib_file_param'] = ''
+        if cib_file is not None:
+            ## use cib_file if specified
+            if os.path.isfile(cib_file):
+                try:
+                    current_cib = ET.parse(cib_file)
+                except Exception as e:
+                    module.fail_json(msg="Error encountered parsing the cib_file - %s" %(e) )
+                current_cib_root = current_cib.getroot()
+                module.params['cib_file_param'] = '-f ' + cib_file
+            else:
+                module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
         else:
-            module.fail_json(msg='Failed to load current cluster configuration')
+            ## get running cluster configuration
+            rc, out, err = module.run_command('pcs cluster cib')
+            if rc == 0:
+                current_cib_root = ET.fromstring(out)
+            else:
+                module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
         
         ## try to find the constraint we have defined
         constraint = None
@@ -125,11 +145,11 @@ def main():
         } )
 
         # order constraint creation command
-        cmd_create='pcs constraint order %(resource1_action)s %(resource1)s then %(resource2_action)s %(resource2)s kind=%(kind)s symmetrical=%(symmetrical)s' % module.params
+        cmd_create='pcs %(cib_file_param)s constraint order %(resource1_action)s %(resource1)s then %(resource2_action)s %(resource2)s kind=%(kind)s symmetrical=%(symmetrical)s' % module.params
 
         # order constraint deletion command
         if constraint is not None:
-            cmd_delete = 'pcs constraint delete '+ constraint.attrib.get('id')
+            cmd_delete = 'pcs %(cib_file_param)s constraint delete '+ constraint.attrib.get('id')
 
         if state == 'present' and constraint is None:
             # constraint should be present, but we don't see it in configuration - lets create it

@@ -39,6 +39,11 @@ options:
       - constraint score in range -INFINITY..0..INFINITY
     required: false
     default: 'INFINITY'
+  cib_file:
+    description:
+      - "Apply changes to specified file containing cluster CIB instead of running cluster."
+      - "This module requires the file to already contain cluster configuration."
+    required: false
 notes:
    - tested on CentOS 7.3
    - no extra options allowed for constraints
@@ -66,6 +71,7 @@ def main():
                         resource1_role=dict(required=False, choices=['Master', 'Slave']),
                         resource2_role=dict(required=False, choices=['Master', 'Slave']),
                         score=dict(required=False, default="INFINITY"),
+                        cib_file=dict(required=False),
                 ),
                 supports_check_mode=True
         )
@@ -76,18 +82,32 @@ def main():
         resource1_role = module.params['resource1_role']
         resource2_role = module.params['resource2_role']
         score = module.params['score']
+        cib_file = module.params['cib_file']
 
         result = {}
 
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
-        ## get running cluster configuration
-        rc, out, err = module.run_command('pcs cluster cib')
-        if rc == 0:
-            current_cib_root = ET.fromstring(out)
+        module.params['cib_file_param'] = ''
+        if cib_file is not None:
+            ## use cib_file if specified
+            if os.path.isfile(cib_file):
+                try:
+                    current_cib = ET.parse(cib_file)
+                except Exception as e:
+                    module.fail_json(msg="Error encountered parsing the cib_file - %s" %(e) )
+                current_cib_root = current_cib.getroot()
+                module.params['cib_file_param'] = '-f ' + cib_file
+            else:
+                module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
         else:
-            module.fail_json(msg='Failed to load current cluster configuration')
+            ## get running cluster configuration
+            rc, out, err = module.run_command('pcs cluster cib')
+            if rc == 0:
+                current_cib_root = ET.fromstring(out)
+            else:
+                module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
         
         ## try to find the constraint we have defined
         constraint = None
@@ -117,17 +137,17 @@ def main():
         # colocation constraint creation command
         if with_roles == True:
             if resource1_role is not None and resource2_role is not None:
-                cmd_create='pcs constraint colocation add %(resource1_role)s %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
+                cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
             elif resource1_role is not None and resource2_role is None:
-                cmd_create='pcs constraint colocation add %(resource1_role)s %(resource1)s with %(resource2)s %(score)s' % module.params
+                cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2)s %(score)s' % module.params
             elif resource1_role is None and resource2_role is not None:
-                cmd_create='pcs constraint colocation add %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
+                cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
         else:
-            cmd_create='pcs constraint colocation add %(resource1)s with %(resource2)s %(score)s' % module.params
+            cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2)s %(score)s' % module.params
 
         # colocation constraint deletion command
         if constraint is not None:
-            cmd_delete = 'pcs constraint delete '+ constraint.attrib.get('id')
+            cmd_delete = 'pcs %(cib_file_param)s constraint delete '+ constraint.attrib.get('id')
 
         if state == 'present' and constraint is None:
             # constraint should be present, but we don't see it in configuration - lets create it

@@ -41,6 +41,11 @@ options:
     required: false
     default: no
     type: bool
+  cib_file:
+    description:
+      - "Apply changes to specified file containing cluster CIB instead of running cluster."
+      - "This module requires the file to already contain cluster configuration."
+    required: false
 notes:
    - tested on CentOS 6.8, 7.3
    - module can create and delete clones, groups and master resources indirectly - 
@@ -156,6 +161,7 @@ def main():
                         resource_type=dict(required=False),
                         options=dict(default="", required=False),
                         force_resource_update=dict(default=False, type=bool, required=False),
+                        cib_file=dict(required=False),
                 ),
                 supports_check_mode=True
         )
@@ -163,6 +169,8 @@ def main():
         state = module.params['state']
         resource_name = module.params['name']
         resource_class = module.params['resource_class']
+        cib_file = module.params['cib_file']
+
         if state == 'present' and (not module.params['resource_type']):
             module.fail_json(msg='When creating cluster resource you must specify the resource_type')
         result = {}
@@ -170,12 +178,25 @@ def main():
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
-        ## get running cluster configuration
-        rc, out, err = module.run_command('pcs cluster cib')
-        if rc == 0:
-            current_cib_root = ET.fromstring(out)
+        module.params['cib_file_param'] = ''
+        if cib_file is not None:
+            ## use cib_file if specified
+            if os.path.isfile(cib_file):
+                try:
+                    current_cib = ET.parse(cib_file)
+                except Exception as e:
+                    module.fail_json(msg="Error encountered parsing the cib_file - %s" %(e) )
+                current_cib_root = current_cib.getroot()
+                module.params['cib_file_param'] = '-f ' + cib_file
+            else:
+                module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
         else:
-            module.fail_json(msg='Failed to load current cluster configuration')
+            ## get running cluster configuration
+            rc, out, err = module.run_command('pcs cluster cib')
+            if rc == 0:
+                current_cib_root = ET.fromstring(out)
+            else:
+                module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
         
         ## try to find the resource that we seek
         resource = None
@@ -187,9 +208,9 @@ def main():
             result['changed'] = True
             if not module.check_mode:
                 if resource_class == 'stonith':
-                    cmd='pcs stonith create %(name)s %(resource_type)s %(options)s' % module.params
+                    cmd='pcs %(cib_file_param)s stonith create %(name)s %(resource_type)s %(options)s' % module.params
                 else:
-                    cmd='pcs resource create %(name)s %(resource_type)s %(options)s' % module.params
+                    cmd='pcs %(cib_file_param)s resource create %(name)s %(resource_type)s %(options)s' % module.params
                 rc, out, err = module.run_command(cmd)
                 if rc != 0 and "Call cib_replace failed (-62): Timer expired" in err:
                     # EL6: special retry when we failed to create resource because of timer waiting on cib expired
@@ -231,6 +252,14 @@ def main():
                         result['diff'] = diff
                         if not module.check_mode:
                             replace_element(resource, clean_resource)
+                            ## when we use cib_file then we can dump the changed CIB directly into file
+                            if cib_file is not None:
+                                try:
+                                    current_cib.write(cib_file)#FIXME add try/catch for writing into file
+                                except Exception as e:
+                                    module.fail_json(msg="Error encountered writing result to cib_file - %s" %(e) )
+                                module.exit_json(changed=True)
+                            ## when not using cib_file then we continue preparing changes for cib-push into running cluster
                             new_cib = ET.ElementTree(current_cib_root)
                             new_cib_fd, new_cib_path = tempfile.mkstemp()
                             module.add_cleanup_file(new_cib_path)
@@ -252,9 +281,9 @@ def main():
             result['changed'] = True
             if not module.check_mode:
                 if resource_class == 'stonith':
-                    cmd='pcs stonith delete %(name)s' % module.params
+                    cmd='pcs %(cib_file_param)s stonith delete %(name)s' % module.params
                 else:
-                    cmd='pcs resource delete %(name)s' % module.params
+                    cmd='pcs %(cib_file_param)s resource delete %(name)s' % module.params
                 rc, out, err = module.run_command(cmd)
                 if rc == 0:
                     module.exit_json(changed=True)

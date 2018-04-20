@@ -242,6 +242,10 @@ def main():
                 clean_resource = find_resource(cib_clean_resources, resource_name)
 
                 if clean_resource is not None:
+                    # remove the meta_attribute element from original cluster cib when empty to make comparison clean - Issue #10
+                    for elem in list(resource):
+                        if elem.tag == 'meta_attributes' and len(list(elem)) == 0:
+                            resource.remove(elem)
                     rc, diff = compare_resources(module, resource, clean_resource)
                     if rc == 0:
                         # if no differnces were find there is no need to update the resource

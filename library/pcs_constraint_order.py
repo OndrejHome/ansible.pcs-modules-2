@@ -149,7 +149,7 @@ def main():
 
         # order constraint deletion command
         if constraint is not None:
-            cmd_delete = 'pcs %(cib_file_param)s constraint delete '+ constraint.attrib.get('id')
+            cmd_delete = 'pcs %(cib_file_param)s constraint delete ' % module.params + constraint.attrib.get('id')
 
         if state == 'present' and constraint is None:
             # constraint should be present, but we don't see it in configuration - lets create it

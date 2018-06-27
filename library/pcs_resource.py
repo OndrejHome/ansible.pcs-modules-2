@@ -160,7 +160,7 @@ def main():
                         resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
                         resource_type=dict(required=False),
                         options=dict(default="", required=False),
-                        force_resource_update=dict(default=False, type=bool, required=False),
+                        force_resource_update=dict(default=False, type='bool', required=False),
                         cib_file=dict(required=False),
                 ),
                 supports_check_mode=True

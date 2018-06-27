@@ -1,5 +1,11 @@
 #!/usr/bin/python
 
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
+
 DOCUMENTATION = '''
 ---
 author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"

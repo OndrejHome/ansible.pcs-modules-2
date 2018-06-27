@@ -14,7 +14,7 @@ short_description: "wrapper module for 'pcs resource' "
 description:
      - "Module for creating, deleting and updating clusters resources using 'pcs' utility."
      - "This module should be executed for same resorce only on one of the nodes in cluster at a time."
-version_added: "2.0"
+version_added: "2.4"
 options:
   state:
     description:
@@ -158,7 +158,9 @@ def find_resource(cib, resource_id):
                     break
         return my_resource
 
-def main():
+from ansible.module_utils.basic import AnsibleModule
+
+def run_module():
         module = AnsibleModule(
                 argument_spec = dict(
                         state=dict(default="present", choices=['present', 'absent']),
@@ -307,6 +309,8 @@ def main():
         ## END of module
         module.exit_json(**result)
 
-# import module snippets
-from ansible.module_utils.basic import *
-main()
+def main():
+    run_module()
+
+if __name__ == '__main__':
+    main()

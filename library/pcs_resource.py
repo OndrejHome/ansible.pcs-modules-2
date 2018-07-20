@@ -79,6 +79,7 @@ EXAMPLES = '''
 ## TODO if group exists and is not part of group, then specifying group won't put it into group
 # same problem is with clone and master - it might be better to make this functionality into separate module
 
+import sys
 import os.path
 import xml.etree.ElementTree as ET
 import tempfile

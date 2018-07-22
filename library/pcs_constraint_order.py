@@ -59,6 +59,12 @@ options:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
       - "This module requires the file to already contain cluster configuration."
     required: false
+  constraint_match:
+    description:
+      - "Which attributes to use to match the order constraint resource."
+    required: false
+    choices: ['resource-names-only','resource-names-and-actions']
+    default: 'resource-names-and-actions'
 notes:
    - tested on CentOS 7.3
 '''
@@ -97,6 +103,7 @@ def run_module():
                         kind=dict(required=False, choices=['Optional', 'Mandatory', 'Serialize'], default='Mandatory'),
                         symmetrical=dict(required=False, choices=['true', 'false'], default='true'),
                         cib_file=dict(required=False),
+                        constraint_match=dict(required=False, choices=['resource-names-only','resource-names-and-actions'], default='resource-names-and-actions'),
                 ),
                 supports_check_mode=True
         )
@@ -109,6 +116,7 @@ def run_module():
         kind = module.params['kind']
         symmetrical = module.params['symmetrical']
         cib_file = module.params['cib_file']
+        constraint_match = module.params['constraint_match']
 
         result = {}
 
@@ -140,7 +148,10 @@ def run_module():
         constraints = current_cib_root.findall("./configuration/constraints/rsc_order")
         for constr in constraints:
             # constraint is considered found if we see resources with same names and order as given to module
-            if constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2:
+            if constraint_match == 'resource-names-only' and constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2:
+                constraint = constr
+                break
+            elif constraint_match == 'resource-names-and-actions' and constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2 and constr.attrib.get('first-action','start') == resource1_action and constr.attrib.get('then-action', 'start') == resource2_action:
                 constraint = constr
                 break
 
@@ -182,7 +193,7 @@ def run_module():
                         if rc == 0:
                             module.exit_json(**result)
                         else:
-                            module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err)
+                            module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err, cmd_del=cmd_delete)
                    
         elif state == 'absent' and constraint is not None:
             # constraint should not be present but we have found something - lets remove that

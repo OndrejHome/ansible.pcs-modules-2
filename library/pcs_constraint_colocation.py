@@ -34,12 +34,14 @@ options:
     description:
       - Role of resource1
     required: false
-    choices: ['Master', 'Slave']
+    choices: ['Master', 'Slave', 'Started']
+    default: 'Started'
   resource2_role:
     description:
       - Role of resource2
     required: false
-    choices: ['Master', 'Slave']
+    choices: ['Master', 'Slave', 'Started']
+    default: 'Started'
   score:
     description:
       - constraint score in range -INFINITY..0..INFINITY
@@ -76,8 +78,8 @@ def run_module():
                         state=dict(default="present", choices=['present', 'absent']),
                         resource1=dict(required=True),
                         resource2=dict(required=True),
-                        resource1_role=dict(required=False, choices=['Master', 'Slave']),
-                        resource2_role=dict(required=False, choices=['Master', 'Slave']),
+                        resource1_role=dict(required=False, choices=['Master', 'Slave', 'Started'], default='Started'),
+                        resource2_role=dict(required=False, choices=['Master', 'Slave', 'Started'], default='Started'),
                         score=dict(required=False, default="INFINITY"),
                         cib_file=dict(required=False),
                 ),
@@ -120,35 +122,38 @@ def run_module():
         ## try to find the constraint we have defined
         constraint = None
         with_roles = False
-        role1,role2,detected_role1,detected_role2 = None, None, None, None
-        # resolve resource roles if they were provided
-        if resource1_role or resource2_role:
-            role1 = 'Started' if not resource1_role else resource1_role
-            role2 = 'Started' if not resource2_role else resource2_role
+        detected_role1,detected_role2 = None, None
+        # check if we have requested a non-default roles
+        if resource1_role != 'Started' or resource2_role != 'Started':
             with_roles = True
         constraints = current_cib_root.findall("./configuration/constraints/rsc_colocation")
         for constr in constraints:
-            # constraint is considered found if we see resources with same names and order as given to module
-            if constr.attrib.get('rsc') == resource1 and constr.attrib.get('with-rsc') == resource2:
+            # constraint is matched using following criteria:
+            # - resource order (resource1 with resource2)
+            # - resource roles (resource1_role with resource2_role)
+            if constr.attrib.get('rsc') == resource1 and constr.attrib.get('with-rsc') == resource2 and constr.attrib.get('rsc-role', 'Started') == resource1_role and constr.attrib.get('with-rsc-role', 'Started') == resource2_role:
                 constraint = constr
-                detected_role1 = 'Started' if not constr.attrib.get('rsc-role') else constr.attrib.get('rsc-role')
-                detected_role2 = 'Started' if not constr.attrib.get('with-rsc-role') else constr.attrib.get('with-rsc-role')
                 break
 
         # additional variables for verbose output
-        result.update( {
-            'old_score': None if constraint is None else constraint.attrib.get('score'), 'new_score': score,
-            'old_role1': detected_role1, 'new_role1': role1,
-            'old_role2': detected_role2, 'new_role2': role2
-        } )
+        if constraint is not None:
+            result.update( {
+                'constraint_was_matched': True,
+                'score': constraint.attrib.get('score'),
+                'resource1_role': constr.attrib.get('rsc-role'),
+                'resource2_role': constr.attrib.get('with-rsc-role'),
+            } )
+        else:
+            result.update( { 'constraint_was_matched': False} )
 
         # colocation constraint creation command
+        # TODO: check which old versions requires this, the 0.9.162 seems to handle 'Started' role correctly
         if with_roles == True:
-            if resource1_role is not None and resource2_role is not None:
+            if resource1_role != 'Started' and resource2_role != 'Started':
                 cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
-            elif resource1_role is not None and resource2_role is None:
+            elif resource1_role != 'Started' and resource2_role == 'Started':
                 cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2)s %(score)s' % module.params
-            elif resource1_role is None and resource2_role is not None:
+            elif resource1_role == 'Started' and resource2_role != 'Started':
                 cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
         else:
             cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2)s %(score)s' % module.params
@@ -168,8 +173,8 @@ def run_module():
                     module.fail_json(msg="Failed to create constraint with cmd: '" + cmd_create + "'", output=out, error=err)
 
         elif state == 'present' and constraint is not None:
-            # constraint should be present based on resource names and order, lets check the scores and roles
-            if constraint.attrib.get('score') != score or (role1 is not None and role1 != detected_role1) or (role2 is not None and role2 != detected_role2):
+            # constraint should be present, lets see if it has different score from requested, if yes, then we do update
+            if constraint.attrib.get('score', 'INFINITY') != score:
                 result['changed'] = True
                 if not module.check_mode:
                     rc, out, err = module.run_command(cmd_delete)

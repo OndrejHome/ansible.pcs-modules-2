@@ -59,12 +59,6 @@ options:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
       - "This module requires the file to already contain cluster configuration."
     required: false
-  constraint_match:
-    description:
-      - "Which attributes to use to match the order constraint resource."
-    required: false
-    choices: ['resource-names-only','resource-names-and-actions']
-    default: 'resource-names-and-actions'
 notes:
    - tested on CentOS 7.3
 '''
@@ -103,7 +97,6 @@ def run_module():
                         kind=dict(required=False, choices=['Optional', 'Mandatory', 'Serialize'], default='Mandatory'),
                         symmetrical=dict(required=False, choices=['true', 'false'], default='true'),
                         cib_file=dict(required=False),
-                        constraint_match=dict(required=False, choices=['resource-names-only','resource-names-and-actions'], default='resource-names-and-actions'),
                 ),
                 supports_check_mode=True
         )
@@ -116,7 +109,6 @@ def run_module():
         kind = module.params['kind']
         symmetrical = module.params['symmetrical']
         cib_file = module.params['cib_file']
-        constraint_match = module.params['constraint_match']
 
         result = {}
 
@@ -147,21 +139,25 @@ def run_module():
         constraint = None
         constraints = current_cib_root.findall("./configuration/constraints/rsc_order")
         for constr in constraints:
-            # constraint is considered found if we see resources with same names and order as given to module
-            if constraint_match == 'resource-names-only' and constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2:
-                constraint = constr
-                break
-            elif constraint_match == 'resource-names-and-actions' and constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2 and constr.attrib.get('first-action','start') == resource1_action and constr.attrib.get('then-action', 'start') == resource2_action:
+            # constraint is matched using following criteria:
+            # - resource order (resource1 then resource2)
+            # - resource actions (resource1_action then resource2_action)
+            # only if above is matched, the constraint is considered to match
+            if constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2 and constr.attrib.get('first-action','start') == resource1_action and constr.attrib.get('then-action', 'start') == resource2_action:
                 constraint = constr
                 break
 
-        # additional variables for verbose output
-        result.update( {
-            'resource1_action': None if constraint is None else constraint.attrib.get('first-action'),
-            'resource2_action': None if constraint is None else constraint.attrib.get('then-action'),
-            'kind': None if constraint is None else constraint.attrib.get('kind'),
-            'symmetrical': None if constraint is None else constraint.attrib.get('symmetrical'),
-        } )
+        # additional variables for verbose output on matching the constraint
+        if constraint is not None:
+            result.update( {
+                'constraint_was_matched': True,
+                'resource1_action': None if constraint is None else constraint.attrib.get('first-action'),
+                'resource2_action': None if constraint is None else constraint.attrib.get('then-action'),
+                'kind': None if constraint is None else constraint.attrib.get('kind'),
+                'symmetrical': None if constraint is None else constraint.attrib.get('symmetrical'),
+            } )
+        else:
+            result.update( { 'constraint_was_matched': False} )
 
         # order constraint creation command
         cmd_create='pcs %(cib_file_param)s constraint order %(resource1_action)s %(resource1)s then %(resource2_action)s %(resource2)s kind=%(kind)s symmetrical=%(symmetrical)s' % module.params
@@ -181,8 +177,11 @@ def run_module():
                     module.fail_json(msg="Failed to create constraint with cmd: '" + cmd_create + "'", output=out, error=err)
 
         elif state == 'present' and constraint is not None:
-            # constraint should be present based on resource names and order, lets check the attributes
-            if resource1_action != constraint.attrib.get('first-action')  or resource2_action != constraint.attrib.get('then-action') or (constraint.attrib.get('kind') is not None and constraint.attrib.get('kind') != kind) or (constraint.attrib.get('symmetrical') is not None and constraint.attrib.get('symmetrical') != symmetrical ):
+            # constraint should be present, let see if the relevant attributes are different (if yes, then we need an update)
+            # constraint is considered different if following attributes are different:
+            # - symmetrical (true, false)
+            # - kind (Mandatory, Optional, Serialize)
+            if constraint.attrib.get('kind', 'Mandatory') != kind or constraint.attrib.get('symmetrical', 'true') != symmetrical:
                 result['changed'] = True
                 if not module.check_mode:
                     rc, out, err = module.run_command(cmd_delete)

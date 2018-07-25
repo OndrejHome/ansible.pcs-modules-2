@@ -141,9 +141,9 @@ def compare_resources(module, res1, res2):
                 # seems that to_native was added in ansible-2.2 (commit 57701d7)
                 diff = {
                     'before_header': '',
-                    'before': to_native(b('').join(n3_file.readlines())),
+                    'before': to_native(b''.join(n3_file.readlines())),
                     'after_header': '',
-                    'after': to_native(b('').join(n4_file.readlines())),
+                    'after': to_native(b''.join(n4_file.readlines())),
                 }
         return rc, diff
 

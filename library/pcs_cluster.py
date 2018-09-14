@@ -61,6 +61,7 @@ EXAMPLES = '''
 '''
 
 import os.path
+import re
 from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
@@ -74,11 +75,16 @@ def run_module():
                         token=dict(required=False, type='int'),
                         transport=dict(required=False, default="default", choices=['default','udp','udpu']),
                         #allow_rename=dict(required=False, default='no', type='bool'),
+                        allow_node_remove=dict(required=False, default=False, type='bool'),
+                        allow_node_add=dict(required=False, default=False, type='bool'),
                 ),
                 supports_check_mode=True
         )
 
         state = module.params['state']
+        allow_node_add = module.params['allow_node_add']
+        allow_node_remove = module.params['allow_node_remove']
+        node_list = module.params['node_list']
         if state == 'present' and (not module.params['node_list'] or not module.params['cluster_name']):
             module.fail_json(msg='When creating cluster you must specify both node_list and cluster_name')
         result = {}
@@ -92,6 +98,30 @@ def run_module():
         cluster_conf_exists = os.path.isfile('/etc/cluster/cluster.conf') 
         ## EL 7 configuration file
         corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf') 
+
+        node_list_set = set(node_list.split())
+        detected_node_list_set = set()
+        if corosync_conf_exists:
+            try:
+                corosync_conf = open('/etc/corosync/corosync.conf','r')
+                nodes = re.compile(r"node\s*\{([^}]+)\}", re.M+re.S)
+                re_nodes_list = nodes.findall(corosync_conf.read())
+                re_node_list_set = set()
+                if len(re_nodes_list) > 0:
+                    n_name = re.compile(r"ring0_addr\s*:\s*([\w.-]+)\s*", re.M)
+                    for node in re_nodes_list:
+                        n_name2 = None
+                        n_name2 = n_name.search(node)
+                        if n_name2:
+                            node_name = n_name2.group(1)
+                            re_node_list_set.add(node_name.rstrip())
+ 
+                detected_node_list_set = re_node_list_set
+            except IOError as e:
+                detected_node_list_set = set()
+            except OSError as e:
+                detected_node_list_set = set()
+
         if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # create cluster from node list that was provided to module
@@ -104,6 +134,32 @@ def run_module():
                     module.exit_json(changed=True)
                 else:
                     module.fail_json(msg="Failed to create cluster using command '" + cmd + "'", output=out, error=err)
+        elif state == 'present' and corosync_conf_exists and ( allow_node_add or allow_node_remove ):
+            result['changed'] = True
+            result['detected_nodes'] = detected_node_list_set
+            # adding new nodes to cluster
+            if allow_node_add:
+                result['nodes_to_add'] = node_list_set - detected_node_list_set
+                for node in ( node_list_set - detected_node_list_set ):
+                    cmd = 'pcs cluster node add ' + node
+                    if not module.check_mode:
+                        rc, out, err = module.run_command(cmd)
+                        if rc == 0:
+                            module.exit_json(changed=True)
+                        else:
+                            module.fail_json(msg="Failed to add node '" + node + "' to cluster using command '" + cmd + "'", output=out, error=err)
+            # removing nodes from cluster
+            if allow_node_remove:
+                result['nodes_to_remove'] = detected_node_list_set - node_list_set
+                for node in ( detected_node_list_set - node_list_set ):
+                    cmd = 'pcs cluster node remove ' + node
+                    if not module.check_mode:
+                        rc, out, err = module.run_command(cmd)
+                        if rc == 0:
+                            module.exit_json(changed=True)
+                        else:
+                            module.fail_json(msg="Failed to remove node '" + node + "' from cluster using command '" + cmd + "'", output=out, error=err)
+
         elif state == 'absent' and (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # destroy cluster on node where this module is executed

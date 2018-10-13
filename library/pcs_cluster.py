@@ -86,7 +86,7 @@ def run_module():
         allow_node_remove = module.params['allow_node_remove']
         node_list = module.params['node_list']
         if state == 'present' and (not module.params['node_list'] or not module.params['cluster_name']):
-            module.fail_json(msg='When creating cluster you must specify both node_list and cluster_name')
+            module.fail_json(msg='When creating/expanding/shrinking cluster you must specify both node_list and cluster_name')
         result = {}
 
         if find_executable('pcs') is None:
@@ -99,7 +99,10 @@ def run_module():
         ## EL 7 configuration file
         corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf') 
 
-        node_list_set = set(node_list.split())
+        if node_list is None:
+            node_list_set = set()
+        else:
+            node_list_set = set(node_list.split())
         detected_node_list_set = set()
         if corosync_conf_exists:
             try:
@@ -122,6 +125,7 @@ def run_module():
             except OSError as e:
                 detected_node_list_set = set()
 
+        # if there is no cluster configuration and cluster should be created do 'pcs cluster setup'
         if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # create cluster from node list that was provided to module
@@ -134,7 +138,8 @@ def run_module():
                     module.exit_json(changed=True)
                 else:
                     module.fail_json(msg="Failed to create cluster using command '" + cmd + "'", output=out, error=err)
-        elif state == 'present' and corosync_conf_exists and ( allow_node_add or allow_node_remove ):
+        # if cluster exists and we are allowed to add/remove nodes do 'pcs cluster node add/remove'
+        elif state == 'present' and corosync_conf_exists and ( allow_node_add or allow_node_remove ) and node_list_set != detected_node_list_set:
             result['changed'] = True
             result['detected_nodes'] = detected_node_list_set
             # adding new nodes to cluster
@@ -159,7 +164,7 @@ def run_module():
                             module.exit_json(changed=True)
                         else:
                             module.fail_json(msg="Failed to remove node '" + node + "' from cluster using command '" + cmd + "'", output=out, error=err)
-
+        # if cluster should be removed and cluster configuration exists
         elif state == 'absent' and (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # destroy cluster on node where this module is executed
@@ -170,9 +175,17 @@ def run_module():
                     module.exit_json(changed=True)
                 else:
                     module.fail_json(msg="Failed to delete cluster using command '" + cmd + "'", output=out, error=err)
+        # if cluster doesn't exists and should be removed, just acknowledge that no chage is needed
+        elif state == 'absent' and (not cluster_conf_exists and not corosync_conf_exists and not cib_xml_exists):
+            module.exit_json(changed=False, msg="No change needed, cluster is not present.")
+        # if the cluster looks as it should
+        elif state == 'present' and corosync_conf_exists and node_list_set == detected_node_list_set:
+            module.exit_json(changed=False, msg="No change needed, cluster is present.")
+        # if requested node list and detected node list are different but we are not allowed to change, fail
+        elif state == 'present' and corosync_conf_exists and (not allow_node_add and not allow_node_remove) and node_list_set != detected_node_list_set:
+            module.fail_json(msg="'Detected node list' and 'Requested node list' are different, but changes are not allowed.")
         else:
-            result['changed'] = False
-            #FIXME not implemented yet
+            # all other cases, possibly also unhadled ones
             module.exit_json(changed=False)
 
         ## END of module

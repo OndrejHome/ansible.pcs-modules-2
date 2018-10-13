@@ -30,11 +30,13 @@ Provided Modules
 
 *pcs_constraint_order* - create/delete cluster order constraints in pacemaker cluster
 
-*pcs_cluster* - create/destroy pacemaker cluster
+*pcs_cluster* - create/destroy pacemaker cluster, adds/removes nodes to/from existing clusters
 
 *pcs_property* - set/unset pacemaker cluster properties
 
 *pcs_resource_defaults* - set/unset resource defaults and resource operation defaults
+
+*detect_pacemaker_cluster* - fact collecting module for collecting various information about pacemaker cluster (currently only the nodes cluster considers to be part of)
 
 Example Playbook
 ----------------

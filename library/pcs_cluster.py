@@ -10,9 +10,9 @@ DOCUMENTATION = '''
 ---
 author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
 module: pcs_cluster
-short_description: "wrapper module for 'pcs cluster setup' and 'pcs cluster destroy'"
+short_description: "wrapper module for 'pcs cluster setup/destroy/node add/node remove'"
 description:
-  - "module for creating and destroying clusters using 'pcs' utility"
+  - "module for creating/destroying/extending/shrinking clusters using 'pcs' utility"
 version_added: "2.4"
 options:
   state:
@@ -44,8 +44,7 @@ options:
     choices: ['default', 'udp', 'udpu']
   allowed_node_changes:
     description:
-      - Defines which node changing operations are allowed:
-      - "'none' - node list must match existing cluster if cluster should be present "
+      - "'none' - node list must match existing cluster if cluster should be present"
       - "'add' - allow adding new nodes to cluster"
       - "'remove' - allow removing nodes from cluster"
     default: none
@@ -54,7 +53,7 @@ options:
 notes:
    - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
    - Tested on Red Hat Enterprise Linux 7.3, 7.4
-   - when adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to node that will stay in cluster, nodes cannot add themselves to cluster and node that removes themselves may not remove all needed cluster information - https://bugzilla.redhat.com/show_bug.cgi?id=1360882
+   - "When adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to node that will stay in cluster, nodes cannot add themselves to cluster and node that removes themselves may not remove all needed cluster information - https://bugzilla.redhat.com/show_bug.cgi?id=1360882"
 '''
 
 EXAMPLES = '''

@@ -42,9 +42,19 @@ options:
     required: false
     default: default
     choices: ['default', 'udp', 'udpu']
+  allowed_node_changes:
+    description:
+      - Defines which node changing operations are allowed:
+      - "'none' - node list must match existing cluster if cluster should be present "
+      - "'add' - allow adding new nodes to cluster"
+      - "'remove' - allow removing nodes from cluster"
+    default: none
+    required: false
+    choices: ['none', 'add', 'remove']
 notes:
-   - Tested on CentOS 6.8, 6.9, 7.3, 7.4
+   - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
    - Tested on Red Hat Enterprise Linux 7.3, 7.4
+   - when adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to node that will stay in cluster, nodes cannot add themselves to cluster and node that removes themselves may not remove all needed cluster information - https://bugzilla.redhat.com/show_bug.cgi?id=1360882
 '''
 
 EXAMPLES = '''
@@ -55,6 +65,16 @@ EXAMPLES = '''
 - name: Create cluster with totem token timeout of 5000 ms and UDP unicast transport protocol
   pcs_cluster: node_list="{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}" cluster_name="test-cluster" token=5000 transport='udpu'
   run_once: true
+
+- name: Add new nodes to existing cluster
+  pcs_cluster: node_list="existing-node-1 existing-node-2 new-node-3 new-node-4" cluster_name="test-cluster" allowed_node_changes="add"
+  run_once: true
+  delegate_to: existing-node-1
+
+- name: Remove nodes from existing cluster cluster (test-cluster: exiting-node-1, exiting-node-2, exiting-node-3, exiting-node-4)
+  pcs_cluster: node_list="existing-node-1 existing-node-2" cluster_name="test-cluster" allowed_node_changes="remove"
+  run_once: true
+  delegate_to: existing-node-1
 
 - name: Destroy cluster on each node
   pcs_cluster: state='absent'
@@ -75,15 +95,13 @@ def run_module():
                         token=dict(required=False, type='int'),
                         transport=dict(required=False, default="default", choices=['default','udp','udpu']),
                         #allow_rename=dict(required=False, default='no', type='bool'),
-                        allow_node_remove=dict(required=False, default=False, type='bool'),
-                        allow_node_add=dict(required=False, default=False, type='bool'),
+                        allowed_node_changes=dict(required=False, default="none", choices=['none','add','remove']),
                 ),
                 supports_check_mode=True
         )
 
         state = module.params['state']
-        allow_node_add = module.params['allow_node_add']
-        allow_node_remove = module.params['allow_node_remove']
+        allowed_node_changes = module.params['allowed_node_changes']
         node_list = module.params['node_list']
         if state == 'present' and (not module.params['node_list'] or not module.params['cluster_name']):
             module.fail_json(msg='When creating/expanding/shrinking cluster you must specify both node_list and cluster_name')
@@ -139,11 +157,11 @@ def run_module():
                 else:
                     module.fail_json(msg="Failed to create cluster using command '" + cmd + "'", output=out, error=err)
         # if cluster exists and we are allowed to add/remove nodes do 'pcs cluster node add/remove'
-        elif state == 'present' and corosync_conf_exists and ( allow_node_add or allow_node_remove ) and node_list_set != detected_node_list_set:
+        elif state == 'present' and corosync_conf_exists and allowed_node_changes != 'none' and node_list_set != detected_node_list_set:
             result['changed'] = True
             result['detected_nodes'] = detected_node_list_set
             # adding new nodes to cluster
-            if allow_node_add:
+            if allowed_node_changes == 'add':
                 result['nodes_to_add'] = node_list_set - detected_node_list_set
                 for node in ( node_list_set - detected_node_list_set ):
                     cmd = 'pcs cluster node add ' + node
@@ -154,7 +172,7 @@ def run_module():
                         else:
                             module.fail_json(msg="Failed to add node '" + node + "' to cluster using command '" + cmd + "'", output=out, error=err)
             # removing nodes from cluster
-            if allow_node_remove:
+            if allowed_node_changes == 'remove':
                 result['nodes_to_remove'] = detected_node_list_set - node_list_set
                 for node in ( detected_node_list_set - node_list_set ):
                     cmd = 'pcs cluster node remove ' + node
@@ -182,7 +200,7 @@ def run_module():
         elif state == 'present' and corosync_conf_exists and node_list_set == detected_node_list_set:
             module.exit_json(changed=False, msg="No change needed, cluster is present.")
         # if requested node list and detected node list are different but we are not allowed to change, fail
-        elif state == 'present' and corosync_conf_exists and (not allow_node_add and not allow_node_remove) and node_list_set != detected_node_list_set:
+        elif state == 'present' and corosync_conf_exists and allowed_node_changes == 'none' and node_list_set != detected_node_list_set:
             module.fail_json(msg="'Detected node list' and 'Requested node list' are different, but changes are not allowed.")
         else:
             # all other cases, possibly also unhadled ones

@@ -72,9 +72,10 @@ from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         resource1=dict(required=True),
                         resource2=dict(required=True),
@@ -101,28 +102,28 @@ def run_module():
 
         module.params['cib_file_param'] = ''
         if cib_file is not None:
-            ## use cib_file if specified
+            # use cib_file if specified
             if os.path.isfile(cib_file):
                 try:
                     current_cib = ET.parse(cib_file)
                 except Exception as e:
-                    module.fail_json(msg="Error encountered parsing the cib_file - %s" %(e) )
+                    module.fail_json(msg="Error encountered parsing the cib_file - %s" % (e))
                 current_cib_root = current_cib.getroot()
                 module.params['cib_file_param'] = '-f ' + cib_file
             else:
                 module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
         else:
-            ## get running cluster configuration
+            # get running cluster configuration
             rc, out, err = module.run_command('pcs cluster cib')
             if rc == 0:
                 current_cib_root = ET.fromstring(out)
             else:
                 module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
-        
-        ## try to find the constraint we have defined
+
+        # try to find the constraint we have defined
         constraint = None
         with_roles = False
-        detected_role1,detected_role2 = None, None
+        detected_role1, detected_role2 = None, None
         # check if we have requested a non-default roles
         if resource1_role != 'Started' or resource2_role != 'Started':
             with_roles = True
@@ -137,26 +138,26 @@ def run_module():
 
         # additional variables for verbose output
         if constraint is not None:
-            result.update( {
+            result.update({
                 'constraint_was_matched': True,
                 'score': constraint.attrib.get('score'),
                 'resource1_role': constr.attrib.get('rsc-role'),
                 'resource2_role': constr.attrib.get('with-rsc-role'),
-            } )
+            })
         else:
-            result.update( { 'constraint_was_matched': False} )
+            result.update({'constraint_was_matched': False})
 
         # colocation constraint creation command
         # TODO: check which old versions requires this, the 0.9.162 seems to handle 'Started' role correctly
-        if with_roles == True:
+        if with_roles is True:
             if resource1_role != 'Started' and resource2_role != 'Started':
-                cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
+                cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
             elif resource1_role != 'Started' and resource2_role == 'Started':
-                cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2)s %(score)s' % module.params
+                cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2)s %(score)s' % module.params
             elif resource1_role == 'Started' and resource2_role != 'Started':
-                cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
+                cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
         else:
-            cmd_create='pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2)s %(score)s' % module.params
+            cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2)s %(score)s' % module.params
 
         # colocation constraint deletion command
         if constraint is not None:
@@ -186,7 +187,7 @@ def run_module():
                             module.exit_json(**result)
                         else:
                             module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err)
-                   
+
         elif state == 'absent' and constraint is not None:
             # constraint should not be present but we have found something - lets remove that
             result['changed'] = True
@@ -200,8 +201,9 @@ def run_module():
             # constraint should not be present and is not there, nothing to do
             result['changed'] = False
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

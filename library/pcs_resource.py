@@ -54,9 +54,9 @@ options:
     required: false
 notes:
    - tested on CentOS 6.8, 7.3
-   - module can create and delete clones, groups and master resources indirectly - 
+   - module can create and delete clones, groups and master resources indirectly -
      resource can specify --clone, --group, --master option which will cause them to create
-     or become part of clone/group/master 
+     or become part of clone/group/master
 '''
 
 EXAMPLES = '''
@@ -76,7 +76,7 @@ EXAMPLES = '''
   pcs_resource: name="test" resource_type="ocf:pacemaker:Dummy" options="fake=some_value --master meta master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true op monitor interval=60s meta resource-stickiness=100"
 '''
 
-## TODO if group exists and is not part of group, then specifying group won't put it into group
+# TODO if group exists and is not part of group, then specifying group won't put it into group
 # same problem is with clone and master - it might be better to make this functionality into separate module
 
 import sys
@@ -93,13 +93,15 @@ try:
 except ImportError:
         pass
 
+
 def replace_element(elem, replacement):
         elem.clear()
         elem.text = replacement.text
         elem.tail = replacement.tail
         elem.tag = replacement.tag
         elem.attrib = replacement.attrib
-        elem[:] = replacement[:] 
+        elem[:] = replacement[:]
+
 
 def compare_resources(module, res1, res2):
         # we now have 2 nodes that we can compare, so lets dump them into files for comparring
@@ -107,28 +109,28 @@ def compare_resources(module, res1, res2):
         n2_file_fd, n2_tmp_path = tempfile.mkstemp()
         n1_file = open(n1_tmp_path, 'w')
         n2_file = open(n2_tmp_path, 'w')
-        ## dump the XML resource definitions into temporary files
+        # dump the XML resource definitions into temporary files
         sys.stdout = n1_file
         ET.dump(res1)
         sys.stdout = n2_file
         ET.dump(res2)
         sys.stdout = sys.__stdout__
-        ##
+        # close files
         n1_file.close()
         n2_file.close()
-        ## normalize the files and store results in new files - this also removes some unimportant spaces and stuff
+        # normalize the files and store results in new files - this also removes some unimportant spaces and stuff
         n3_file_fd, n3_tmp_path = tempfile.mkstemp()
         n4_file_fd, n4_tmp_path = tempfile.mkstemp()
         rc, out, err = module.run_command('xmllint --format --output ' + n3_tmp_path + ' ' + n1_tmp_path)
         rc, out, err = module.run_command('xmllint --format --output ' + n4_tmp_path + ' ' + n2_tmp_path)
 
-        ## addd files that should be cleaned up
+        # add files that should be cleaned up
         module.add_cleanup_file(n1_tmp_path)
         module.add_cleanup_file(n2_tmp_path)
         module.add_cleanup_file(n3_tmp_path)
         module.add_cleanup_file(n4_tmp_path)
 
-        ## now compare files
+        # now compare files
         diff = ''
         rc, out, err = module.run_command('diff ' + n3_tmp_path + ' ' + n4_tmp_path)
         if rc != 0:
@@ -147,9 +149,10 @@ def compare_resources(module, res1, res2):
                 }
         return rc, diff
 
+
 def find_resource(cib, resource_id):
         my_resource = None
-        tags = [ 'group', 'clone', 'master', 'primitive' ]
+        tags = ['group', 'clone', 'master', 'primitive']
         for elem in list(cib):
             if elem.attrib.get('id') == resource_id:
                 return elem
@@ -161,9 +164,10 @@ def find_resource(cib, resource_id):
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         name=dict(required=True),
                         resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
@@ -189,25 +193,25 @@ def run_module():
 
         module.params['cib_file_param'] = ''
         if cib_file is not None:
-            ## use cib_file if specified
+            # use cib_file if specified
             if os.path.isfile(cib_file):
                 try:
                     current_cib = ET.parse(cib_file)
                 except Exception as e:
-                    module.fail_json(msg="Error encountered parsing the cib_file - %s" %(e) )
+                    module.fail_json(msg="Error encountered parsing the cib_file - %s" % (e))
                 current_cib_root = current_cib.getroot()
                 module.params['cib_file_param'] = '-f ' + cib_file
             else:
                 module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
         else:
-            ## get running cluster configuration
+            # get running cluster configuration
             rc, out, err = module.run_command('pcs cluster cib')
             if rc == 0:
                 current_cib_root = ET.fromstring(out)
             else:
                 module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
-        
-        ## try to find the resource that we seek
+
+        # try to find the resource that we seek
         resource = None
         cib_resources = current_cib_root.find('./configuration/resources')
         resource = find_resource(cib_resources, resource_name)
@@ -217,9 +221,9 @@ def run_module():
             result['changed'] = True
             if not module.check_mode:
                 if resource_class == 'stonith':
-                    cmd='pcs %(cib_file_param)s stonith create %(name)s %(resource_type)s %(options)s' % module.params
+                    cmd = 'pcs %(cib_file_param)s stonith create %(name)s %(resource_type)s %(options)s' % module.params
                 else:
-                    cmd='pcs %(cib_file_param)s resource create %(name)s %(resource_type)s %(options)s' % module.params
+                    cmd = 'pcs %(cib_file_param)s resource create %(name)s %(resource_type)s %(options)s' % module.params
                 rc, out, err = module.run_command(cmd)
                 if rc != 0 and "Call cib_replace failed (-62): Timer expired" in err:
                     # EL6: special retry when we failed to create resource because of timer waiting on cib expired
@@ -243,7 +247,7 @@ def run_module():
                 cmd = 'pcs -f ' + clean_cib_path + ' resource create %(name)s %(resource_type)s %(options)s' % module.params
             rc, out, err = module.run_command(cmd)
             if rc == 0:
-                ## we have a comparable resource created in clean cluster, so lets select it and compare it
+                # we have a comparable resource created in clean cluster, so lets select it and compare it
                 clean_cib = ET.parse(clean_cib_path)
                 clean_cib_root = clean_cib.getroot()
                 clean_resource = None
@@ -265,14 +269,14 @@ def run_module():
                         result['diff'] = diff
                         if not module.check_mode:
                             replace_element(resource, clean_resource)
-                            ## when we use cib_file then we can dump the changed CIB directly into file
+                            # when we use cib_file then we can dump the changed CIB directly into file
                             if cib_file is not None:
                                 try:
-                                    current_cib.write(cib_file)#FIXME add try/catch for writing into file
+                                    current_cib.write(cib_file)  # FIXME add try/catch for writing into file
                                 except Exception as e:
-                                    module.fail_json(msg="Error encountered writing result to cib_file - %s" %(e) )
+                                    module.fail_json(msg="Error encountered writing result to cib_file - %s" % (e))
                                 module.exit_json(changed=True)
-                            ## when not using cib_file then we continue preparing changes for cib-push into running cluster
+                            # when not using cib_file then we continue preparing changes for cib-push into running cluster
                             new_cib = ET.ElementTree(current_cib_root)
                             new_cib_fd, new_cib_path = tempfile.mkstemp()
                             module.add_cleanup_file(new_cib_path)
@@ -294,9 +298,9 @@ def run_module():
             result['changed'] = True
             if not module.check_mode:
                 if resource_class == 'stonith':
-                    cmd='pcs %(cib_file_param)s stonith delete %(name)s' % module.params
+                    cmd = 'pcs %(cib_file_param)s stonith delete %(name)s' % module.params
                 else:
-                    cmd='pcs %(cib_file_param)s resource delete %(name)s' % module.params
+                    cmd = 'pcs %(cib_file_param)s resource delete %(name)s' % module.params
                 rc, out, err = module.run_command(cmd)
                 if rc == 0:
                     module.exit_json(changed=True)
@@ -307,8 +311,9 @@ def run_module():
             # resource should not be present and is nto there, nothing to do
             result['changed'] = False
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

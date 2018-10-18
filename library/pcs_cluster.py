@@ -85,16 +85,16 @@ from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         node_list=dict(required=False),
                         cluster_name=dict(required=False),
                         token=dict(required=False, type='int'),
-                        transport=dict(required=False, default="default", choices=['default','udp','udpu']),
-                        #allow_rename=dict(required=False, default='no', type='bool'),
-                        allowed_node_changes=dict(required=False, default="none", choices=['none','add','remove']),
+                        transport=dict(required=False, default="default", choices=['default', 'udp', 'udpu']),
+                        allowed_node_changes=dict(required=False, default="none", choices=['none', 'add', 'remove']),
                 ),
                 supports_check_mode=True
         )
@@ -108,13 +108,13 @@ def run_module():
 
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
-        
+
         # /var/lib/pacemaker/cib/cib.xml exists on cluster that were at least once started
-        cib_xml_exists = os.path.isfile('/var/lib/pacemaker/cib/cib.xml') 
-        ## EL 6 configuration file
-        cluster_conf_exists = os.path.isfile('/etc/cluster/cluster.conf') 
-        ## EL 7 configuration file
-        corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf') 
+        cib_xml_exists = os.path.isfile('/var/lib/pacemaker/cib/cib.xml')
+        # EL 6 configuration file
+        cluster_conf_exists = os.path.isfile('/etc/cluster/cluster.conf')
+        # EL 7 configuration file
+        corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf')
 
         if node_list is None:
             node_list_set = set()
@@ -123,7 +123,7 @@ def run_module():
         detected_node_list_set = set()
         if corosync_conf_exists:
             try:
-                corosync_conf = open('/etc/corosync/corosync.conf','r')
+                corosync_conf = open('/etc/corosync/corosync.conf', 'r')
                 nodes = re.compile(r"node\s*\{([^}]+)\}", re.M+re.S)
                 re_nodes_list = nodes.findall(corosync_conf.read())
                 re_node_list_set = set()
@@ -135,7 +135,7 @@ def run_module():
                         if n_name2:
                             node_name = n_name2.group(1)
                             re_node_list_set.add(node_name.rstrip())
- 
+
                 detected_node_list_set = re_node_list_set
             except IOError as e:
                 detected_node_list_set = set()
@@ -162,7 +162,7 @@ def run_module():
             # adding new nodes to cluster
             if allowed_node_changes == 'add':
                 result['nodes_to_add'] = node_list_set - detected_node_list_set
-                for node in ( node_list_set - detected_node_list_set ):
+                for node in (node_list_set - detected_node_list_set):
                     cmd = 'pcs cluster node add ' + node
                     if not module.check_mode:
                         rc, out, err = module.run_command(cmd)
@@ -173,7 +173,7 @@ def run_module():
             # removing nodes from cluster
             if allowed_node_changes == 'remove':
                 result['nodes_to_remove'] = detected_node_list_set - node_list_set
-                for node in ( detected_node_list_set - node_list_set ):
+                for node in (detected_node_list_set - node_list_set):
                     cmd = 'pcs cluster node remove ' + node
                     if not module.check_mode:
                         rc, out, err = module.run_command(cmd)
@@ -205,8 +205,9 @@ def run_module():
             # all other cases, possibly also unhadled ones
             module.exit_json(changed=False)
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

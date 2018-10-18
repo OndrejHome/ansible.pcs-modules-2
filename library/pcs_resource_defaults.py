@@ -63,9 +63,10 @@ from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         defaults_type=dict(required=False, default="meta", choices=['meta', 'op']),
                         name=dict(required=True),
@@ -93,7 +94,7 @@ def run_module():
         if cib_file is not None and os.path.isfile(cib_file):
             module.params['cib_file_param'] = '-f ' + cib_file
 
-        ## get defaults list from running cluster
+        # get defaults list from running cluster
         if defaults_type == 'meta':
             rc, out, err = module.run_command('pcs %(cib_file_param)s resource defaults' % module.params)
         elif defaults_type == 'op':
@@ -101,13 +102,13 @@ def run_module():
         else:
             module.fail_json(msg="'"+defaults_type+"' is not implemented by this module")
 
-        defaults={}
+        defaults = {}
         if rc == 0:
             for row in out.split('\n')[:-1]:
                 if row == 'No defaults set':
-                   break
-                tmp=row.split(':')
-                defaults[tmp[0]]=tmp[1].lstrip()
+                    break
+                tmp = row.split(':')
+                defaults[tmp[0]] = tmp[1].lstrip()
         else:
             module.fail_json(msg='Failed to load resource defaults from cluster. Is cluster running?')
 
@@ -148,8 +149,9 @@ def run_module():
             # No change needed
             result['changed'] = False
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

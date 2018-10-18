@@ -20,16 +20,17 @@ EXAMPLES = '''
 
 '''
 
+
 def main():
         module = AnsibleModule(
-                argument_spec = dict(),
+                argument_spec=dict(),
                 supports_check_mode=True
         )
 
         result = {}
 
         try:
-            corosync_conf = open('/etc/corosync/corosync.conf','r')
+            corosync_conf = open('/etc/corosync/corosync.conf', 'r')
             nodes = re.compile(r"node\s*\{([^}]+)\}", re.M+re.S)
             nodes_list = nodes.findall(corosync_conf.read())
             node_list_set = set()
@@ -41,7 +42,6 @@ def main():
                     if n_name2:
                         node_name = n_name2.group(1)
                         node_list_set.add(node_name.rstrip())
-
 
             result['ansible_facts'] = {}
             result['ansible_facts']['pacemaker_detected_cluster_nodes'] = node_list_set
@@ -57,4 +57,3 @@ def main():
 # import module snippets
 from ansible.module_utils.basic import *
 main()
-

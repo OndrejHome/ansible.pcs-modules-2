@@ -86,9 +86,10 @@ from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         resource1=dict(required=True),
                         resource2=dict(required=True),
@@ -117,25 +118,25 @@ def run_module():
 
         module.params['cib_file_param'] = ''
         if cib_file is not None:
-            ## use cib_file if specified
+            # use cib_file if specified
             if os.path.isfile(cib_file):
                 try:
                     current_cib = ET.parse(cib_file)
                 except Exception as e:
-                    module.fail_json(msg="Error encountered parsing the cib_file - %s" %(e) )
+                    module.fail_json(msg="Error encountered parsing the cib_file - %s" % (e))
                 current_cib_root = current_cib.getroot()
                 module.params['cib_file_param'] = '-f ' + cib_file
             else:
                 module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
         else:
-            ## get running cluster configuration
+            # get running cluster configuration
             rc, out, err = module.run_command('pcs cluster cib')
             if rc == 0:
                 current_cib_root = ET.fromstring(out)
             else:
                 module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
-        
-        ## try to find the constraint we have defined
+
+        # try to find the constraint we have defined
         constraint = None
         constraints = current_cib_root.findall("./configuration/constraints/rsc_order")
         for constr in constraints:
@@ -143,24 +144,24 @@ def run_module():
             # - resource order (resource1 then resource2)
             # - resource actions (resource1_action then resource2_action)
             # only if above is matched, the constraint is considered to match
-            if constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2 and constr.attrib.get('first-action','start') == resource1_action and constr.attrib.get('then-action', 'start') == resource2_action:
+            if constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2 and constr.attrib.get('first-action', 'start') == resource1_action and constr.attrib.get('then-action', 'start') == resource2_action:
                 constraint = constr
                 break
 
         # additional variables for verbose output on matching the constraint
         if constraint is not None:
-            result.update( {
+            result.update({
                 'constraint_was_matched': True,
                 'resource1_action': None if constraint is None else constraint.attrib.get('first-action'),
                 'resource2_action': None if constraint is None else constraint.attrib.get('then-action'),
                 'kind': None if constraint is None else constraint.attrib.get('kind'),
                 'symmetrical': None if constraint is None else constraint.attrib.get('symmetrical'),
-            } )
+            })
         else:
-            result.update( { 'constraint_was_matched': False} )
+            result.update({'constraint_was_matched': False})
 
         # order constraint creation command
-        cmd_create='pcs %(cib_file_param)s constraint order %(resource1_action)s %(resource1)s then %(resource2_action)s %(resource2)s kind=%(kind)s symmetrical=%(symmetrical)s' % module.params
+        cmd_create = 'pcs %(cib_file_param)s constraint order %(resource1_action)s %(resource1)s then %(resource2_action)s %(resource2)s kind=%(kind)s symmetrical=%(symmetrical)s' % module.params
 
         # order constraint deletion command
         if constraint is not None:
@@ -193,7 +194,7 @@ def run_module():
                             module.exit_json(**result)
                         else:
                             module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err, cmd_del=cmd_delete)
-                   
+
         elif state == 'absent' and constraint is not None:
             # constraint should not be present but we have found something - lets remove that
             result['changed'] = True
@@ -207,8 +208,9 @@ def run_module():
             # constraint should not be present and is not there, nothing to do
             result['changed'] = False
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

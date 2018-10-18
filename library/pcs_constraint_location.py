@@ -58,9 +58,10 @@ from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         resource=dict(required=True),
                         node_name=dict(required=True),
@@ -83,25 +84,25 @@ def run_module():
 
         module.params['cib_file_param'] = ''
         if cib_file is not None:
-            ## use cib_file if specified
+            # use cib_file if specified
             if os.path.isfile(cib_file):
                 try:
                     current_cib = ET.parse(cib_file)
                 except Exception as e:
-                    module.fail_json(msg="Error encountered parsing the cib_file - %s" %(e) )
+                    module.fail_json(msg="Error encountered parsing the cib_file - %s" % (e))
                 current_cib_root = current_cib.getroot()
                 module.params['cib_file_param'] = '-f ' + cib_file
             else:
                 module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
         else:
-            ## get running cluster configuration
+            # get running cluster configuration
             rc, out, err = module.run_command('pcs cluster cib')
             if rc == 0:
                 current_cib_root = ET.fromstring(out)
             else:
                 module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
-        
-        ## try to find the constraint we have defined
+
+        # try to find the constraint we have defined
         constraint = None
         constraints = current_cib_root.findall("./configuration/constraints/rsc_location")
         for constr in constraints:
@@ -111,7 +112,7 @@ def run_module():
                 break
 
         # location constraint creation command
-        cmd_create='pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
+        cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
 
         # location constriaint deleter command
         if constraint is not None:
@@ -141,7 +142,7 @@ def run_module():
                             module.exit_json(**result)
                         else:
                             module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err)
-                   
+
         elif state == 'absent' and constraint is not None:
             # constraint should not be present but we have found something - lets remove that
             result['changed'] = True
@@ -155,8 +156,9 @@ def run_module():
             # constraint should not be present and is not there, nothing to do
             result['changed'] = False
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

@@ -61,9 +61,10 @@ from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         node_name=dict(required=True),
                         username=dict(required=False, default="hacluster"),
@@ -84,7 +85,7 @@ def run_module():
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
         if os.path.isfile('/var/lib/pcsd/tokens'):
-            tokens_file = open('/var/lib/pcsd/tokens','r+')
+            tokens_file = open('/var/lib/pcsd/tokens', 'r+')
             # load JSON tokens
             tokens_data = json.load(tokens_file)
 
@@ -99,21 +100,22 @@ def run_module():
                     module.exit_json(changed=True)
                 else:
                     module.fail_json(msg="Failed to authenticate node " + node_name)
-        elif state == 'absent' and tokens_data and tokens_data['tokens'].has_key(node_name):
+        elif state == 'absent' and tokens_data and node_name in tokens_data['tokens']:
             result['changed'] = True
             if not module.check_mode:
                 del tokens_data['tokens'][node_name]
                 tokens_data['data_version'] += 1
                 # write the change into token file
                 tokens_file.seek(0)
-                json.dump(tokens_data,tokens_file,indent=4)
+                json.dump(tokens_data, tokens_file, indent=4)
                 tokens_file.truncate()
         else:
             result['changed'] = False
             module.exit_json(changed=False)
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

@@ -50,9 +50,10 @@ from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+
 def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
+                argument_spec=dict(
                         state=dict(default="present", choices=['present', 'absent']),
                         name=dict(required=True),
                         value=dict(required=False),
@@ -73,19 +74,19 @@ def run_module():
 
         if state == 'present' and value is None:
             module.fail_json(msg="To set property 'value' must be specified.")
-           
+
         module.params['cib_file_param'] = ''
         if cib_file is not None and os.path.isfile(cib_file):
             module.params['cib_file_param'] = '-f ' + cib_file
 
-        ## get property list from running cluster
+        # get property list from running cluster
         rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
-        properties={}
+        properties = {}
         if rc == 0:
             # we are stripping first and last line as they doesn't contain properties
             for row in out.split('\n')[1:-1]:
-                tmp=row.lstrip().split(':')
-                properties[tmp[0]]=tmp[1].lstrip()
+                tmp = row.lstrip().split(':')
+                properties[tmp[0]] = tmp[1].lstrip()
         else:
             module.fail_json(msg='Failed to load properties from cluster. Is cluster running?')
 
@@ -116,8 +117,9 @@ def run_module():
             # No change needed
             result['changed'] = False
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
+
 
 def main():
     run_module()

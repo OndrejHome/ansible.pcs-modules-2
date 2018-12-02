@@ -1,4 +1,10 @@
 #!/usr/bin/python
+# Copyright: (c) 2018, Ondrej Famera <ondrej-xa2iel8u@famera.cz>
+# GNU General Public License v3.0+ (see LICENSE-GPLv3.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -8,7 +14,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+author: "Ondrej Famera (@OndrejHome)"
 module: pcs_resource_defaults
 short_description: "wrapper module for 'pcs resource defaults' and 'pcs resource op defaults'"
 description:
@@ -59,21 +65,21 @@ EXAMPLES = '''
   pcs_resource_defaults: defaults_type='op' name='timeout' state='absent'
 '''
 
+import os.path
 from distutils.spawn import find_executable
-
 from ansible.module_utils.basic import AnsibleModule
 
 
 def run_module():
         module = AnsibleModule(
-                argument_spec=dict(
-                        state=dict(default="present", choices=['present', 'absent']),
-                        defaults_type=dict(required=False, default="meta", choices=['meta', 'op']),
-                        name=dict(required=True),
-                        value=dict(required=False),
-                        cib_file=dict(required=False),
-                ),
-                supports_check_mode=True
+            argument_spec=dict(
+                state=dict(default="present", choices=['present', 'absent']),
+                defaults_type=dict(required=False, default="meta", choices=['meta', 'op']),
+                name=dict(required=True),
+                value=dict(required=False),
+                cib_file=dict(required=False),
+            ),
+            supports_check_mode=True
         )
 
         state = module.params['state']
@@ -100,7 +106,7 @@ def run_module():
         elif defaults_type == 'op':
             rc, out, err = module.run_command('pcs %(cib_file_param)s resource op defaults' % module.params)
         else:
-            module.fail_json(msg="'"+defaults_type+"' is not implemented by this module")
+            module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
 
         defaults = {}
         if rc == 0:
@@ -123,7 +129,7 @@ def run_module():
                 elif defaults_type == 'op':
                     cmd_set = 'pcs %(cib_file_param)s resource op defaults %(name)s=%(value)s' % module.params
                 else:
-                    module.fail_json(msg="'"+defaults_type+"' is not implemented by this module")
+                    module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
                 rc, out, err = module.run_command(cmd_set)
                 if rc == 0:
                     module.exit_json(**result)
@@ -139,7 +145,7 @@ def run_module():
                 elif defaults_type == 'op':
                     cmd_unset = 'pcs %(cib_file_param)s resource op defaults %(name)s=' % module.params
                 else:
-                    module.fail_json(msg="'"+defaults_type+"' is not implemented by this module")
+                    module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
                 rc, out, err = module.run_command(cmd_unset)
                 if rc == 0:
                     module.exit_json(**result)
@@ -155,6 +161,7 @@ def run_module():
 
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

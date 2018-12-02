@@ -1,4 +1,10 @@
 #!/usr/bin/python
+# Copyright: (c) 2018, Ondrej Famera <ondrej-xa2iel8u@famera.cz>
+# GNU General Public License v3.0+ (see LICENSE-GPLv3.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -8,7 +14,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+author: "Ondrej Famera (@OndrejHome)"
 module: pcs_cluster
 short_description: "wrapper module for 'pcs cluster setup/destroy/node add/node remove'"
 description:
@@ -53,7 +59,10 @@ options:
 notes:
    - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
    - Tested on Red Hat Enterprise Linux 7.3, 7.4
-   - "When adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to node that will stay in cluster, nodes cannot add themselves to cluster and node that removes themselves may not remove all needed cluster information - https://bugzilla.redhat.com/show_bug.cgi?id=1360882"
+   - "When adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to
+     node that will stay in cluster, nodes cannot add themselves to cluster and node that removes
+     themselves may not remove all needed cluster information
+     - https://bugzilla.redhat.com/show_bug.cgi?id=1360882"
 '''
 
 EXAMPLES = '''
@@ -62,7 +71,11 @@ EXAMPLES = '''
   run_once: true
 
 - name: Create cluster with totem token timeout of 5000 ms and UDP unicast transport protocol
-  pcs_cluster: node_list="{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}" cluster_name="test-cluster" token=5000 transport='udpu'
+  pcs_cluster:
+    node_list: "{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}"
+    cluster_name: 'test-cluster'
+    token: 5000
+    transport: 'udpu'
   run_once: true
 
 - name: Add new nodes to existing cluster
@@ -70,7 +83,7 @@ EXAMPLES = '''
   run_once: true
   delegate_to: existing-node-1
 
-- name: Remove nodes from existing cluster cluster (test-cluster: exiting-node-1, exiting-node-2, exiting-node-3, exiting-node-4)
+- name: Remove nodes from existing cluster cluster (test-cluster= exiting-node-1, exiting-node-2, exiting-node-3, exiting-node-4)
   pcs_cluster: node_list="existing-node-1 existing-node-2" cluster_name="test-cluster" allowed_node_changes="remove"
   run_once: true
   delegate_to: existing-node-1
@@ -88,15 +101,15 @@ from ansible.module_utils.basic import AnsibleModule
 
 def run_module():
         module = AnsibleModule(
-                argument_spec=dict(
-                        state=dict(default="present", choices=['present', 'absent']),
-                        node_list=dict(required=False),
-                        cluster_name=dict(required=False),
-                        token=dict(required=False, type='int'),
-                        transport=dict(required=False, default="default", choices=['default', 'udp', 'udpu']),
-                        allowed_node_changes=dict(required=False, default="none", choices=['none', 'add', 'remove']),
-                ),
-                supports_check_mode=True
+            argument_spec=dict(
+                state=dict(default="present", choices=['present', 'absent']),
+                node_list=dict(required=False),
+                cluster_name=dict(required=False),
+                token=dict(required=False, type='int'),
+                transport=dict(required=False, default="default", choices=['default', 'udp', 'udpu']),
+                allowed_node_changes=dict(required=False, default="none", choices=['none', 'add', 'remove']),
+            ),
+            supports_check_mode=True
         )
 
         state = module.params['state']
@@ -124,7 +137,7 @@ def run_module():
         if corosync_conf_exists:
             try:
                 corosync_conf = open('/etc/corosync/corosync.conf', 'r')
-                nodes = re.compile(r"node\s*\{([^}]+)\}", re.M+re.S)
+                nodes = re.compile(r"node\s*\{([^}]+)\}", re.M + re.S)
                 re_nodes_list = nodes.findall(corosync_conf.read())
                 re_node_list_set = set()
                 if len(re_nodes_list) > 0:
@@ -138,8 +151,6 @@ def run_module():
 
                 detected_node_list_set = re_node_list_set
             except IOError as e:
-                detected_node_list_set = set()
-            except OSError as e:
                 detected_node_list_set = set()
 
         # if there is no cluster configuration and cluster should be created do 'pcs cluster setup'
@@ -211,6 +222,7 @@ def run_module():
 
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

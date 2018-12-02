@@ -1,4 +1,10 @@
 #!/usr/bin/python
+# Copyright: (c) 2018, Ondrej Famera <ondrej-xa2iel8u@famera.cz>
+# GNU General Public License v3.0+ (see LICENSE-GPLv3.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -8,7 +14,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+author: "Ondrej Famera (@OndrejHome)"
 module: pcs_constraint_order
 short_description: "wrapper module for 'pcs constraint order'"
 description:
@@ -89,17 +95,17 @@ from ansible.module_utils.basic import AnsibleModule
 
 def run_module():
         module = AnsibleModule(
-                argument_spec=dict(
-                        state=dict(default="present", choices=['present', 'absent']),
-                        resource1=dict(required=True),
-                        resource2=dict(required=True),
-                        resource1_action=dict(required=False, choices=['start', 'promote', 'demote', 'stop'], default='start'),
-                        resource2_action=dict(required=False, choices=['start', 'promote', 'demote', 'stop'], default='start'),
-                        kind=dict(required=False, choices=['Optional', 'Mandatory', 'Serialize'], default='Mandatory'),
-                        symmetrical=dict(required=False, choices=['true', 'false'], default='true'),
-                        cib_file=dict(required=False),
-                ),
-                supports_check_mode=True
+            argument_spec=dict(
+                state=dict(default="present", choices=['present', 'absent']),
+                resource1=dict(required=True),
+                resource2=dict(required=True),
+                resource1_action=dict(required=False, choices=['start', 'promote', 'demote', 'stop'], default='start'),
+                resource2_action=dict(required=False, choices=['start', 'promote', 'demote', 'stop'], default='start'),
+                kind=dict(required=False, choices=['Optional', 'Mandatory', 'Serialize'], default='Mandatory'),
+                symmetrical=dict(required=False, choices=['true', 'false'], default='true'),
+                cib_file=dict(required=False),
+            ),
+            supports_check_mode=True
         )
 
         state = module.params['state']
@@ -144,7 +150,10 @@ def run_module():
             # - resource order (resource1 then resource2)
             # - resource actions (resource1_action then resource2_action)
             # only if above is matched, the constraint is considered to match
-            if constr.attrib.get('first') == resource1 and constr.attrib.get('then') == resource2 and constr.attrib.get('first-action', 'start') == resource1_action and constr.attrib.get('then-action', 'start') == resource2_action:
+            if (constr.attrib.get('first') == resource1
+                    and constr.attrib.get('then') == resource2
+                    and constr.attrib.get('first-action', 'start') == resource1_action
+                    and constr.attrib.get('then-action', 'start') == resource2_action):
                 constraint = constr
                 break
 
@@ -214,6 +223,7 @@ def run_module():
 
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

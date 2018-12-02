@@ -1,4 +1,10 @@
 #!/usr/bin/python
+# Copyright: (c) 2018, Ondrej Famera <ondrej-xa2iel8u@famera.cz>
+# GNU General Public License v3.0+ (see LICENSE-GPLv3.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -8,7 +14,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+author: "Ondrej Famera (@OndrejHome)"
 module: pcs_resource
 short_description: "wrapper module for 'pcs resource' "
 description:
@@ -43,7 +49,9 @@ options:
     required: false
   force_resource_update:
     description:
-      - "skip checking for cluster changes when updating existing resource configuration - use 'scope=resources' when pushing the change to cluster. Useful in busy clusters, dangerous when there are concurent updates as they can be lost."
+      - "skip checking for cluster changes when updating existing resource configuration
+        -  use 'scope=resources' when pushing the change to cluster. Useful in busy clusters,
+        dangerous when there are concurent updates as they can be lost."
     required: false
     default: no
     type: bool
@@ -73,7 +81,10 @@ EXAMPLES = '''
   pcs_resource: name='test3' resource_type='ocf:pacemaker:Dummy' options='--group testgrp'
 
 - name: create complex Master/Slave resource 'test-master' of 'ocf:pacemaker:Dummy' type
-  pcs_resource: name="test" resource_type="ocf:pacemaker:Dummy" options="fake=some_value --master meta master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true op monitor interval=60s meta resource-stickiness=100"
+  pcs_resource:
+    name: "test"
+    resource_type: "ocf:pacemaker:Dummy"
+    options: "fake=some_value --master meta master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true op monitor interval=60s meta resource-stickiness=100"
 '''
 
 # TODO if group exists and is not part of group, then specifying group won't put it into group
@@ -84,6 +95,7 @@ import os.path
 import xml.etree.ElementTree as ET
 import tempfile
 from distutils.spawn import find_executable
+from ansible.module_utils.basic import AnsibleModule
 
 # determine if we have 'to_native' function that we can use for 'ansible --diff' output
 to_native_support = False
@@ -162,21 +174,19 @@ def find_resource(cib, resource_id):
                     break
         return my_resource
 
-from ansible.module_utils.basic import AnsibleModule
-
 
 def run_module():
         module = AnsibleModule(
-                argument_spec=dict(
-                        state=dict(default="present", choices=['present', 'absent']),
-                        name=dict(required=True),
-                        resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
-                        resource_type=dict(required=False),
-                        options=dict(default="", required=False),
-                        force_resource_update=dict(default=False, type='bool', required=False),
-                        cib_file=dict(required=False),
-                ),
-                supports_check_mode=True
+            argument_spec=dict(
+                state=dict(default="present", choices=['present', 'absent']),
+                name=dict(required=True),
+                resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
+                resource_type=dict(required=False),
+                options=dict(default="", required=False),
+                force_resource_update=dict(default=False, type='bool', required=False),
+                cib_file=dict(required=False),
+            ),
+            supports_check_mode=True
         )
 
         state = module.params['state']
@@ -317,6 +327,7 @@ def run_module():
 
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

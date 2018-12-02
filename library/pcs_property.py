@@ -1,4 +1,11 @@
 #!/usr/bin/python
+# Copyright: (c) 2018, Ondrej Famera <ondrej-xa2iel8u@famera.cz>
+# GNU General Public License v3.0+ (see LICENSE-GPLv3.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -8,7 +15,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+author: "Ondrej Famera (@OndrejHome)"
 module: pcs_property
 short_description: "wrapper module for 'pcs property'"
 description:
@@ -46,20 +53,20 @@ EXAMPLES = '''
   pcs_property: name='maintenance-mode' state='absent'
 '''
 
+import os.path
 from distutils.spawn import find_executable
-
 from ansible.module_utils.basic import AnsibleModule
 
 
 def run_module():
         module = AnsibleModule(
-                argument_spec=dict(
-                        state=dict(default="present", choices=['present', 'absent']),
-                        name=dict(required=True),
-                        value=dict(required=False),
-                        cib_file=dict(required=False),
-                ),
-                supports_check_mode=True
+            argument_spec=dict(
+                state=dict(default="present", choices=['present', 'absent']),
+                name=dict(required=True),
+                value=dict(required=False),
+                cib_file=dict(required=False),
+            ),
+            supports_check_mode=True
         )
 
         state = module.params['state']
@@ -123,6 +130,7 @@ def run_module():
 
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

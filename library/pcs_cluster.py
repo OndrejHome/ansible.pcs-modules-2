@@ -58,7 +58,7 @@ options:
     choices: ['none', 'add', 'remove']
 notes:
    - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
-   - Tested on Red Hat Enterprise Linux 7.3, 7.4
+   - Tested on Red Hat Enterprise Linux 7.3, 7.4, 7.6
    - "When adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to
      node that will stay in cluster, nodes cannot add themselves to cluster and node that removes
      themselves may not remove all needed cluster information

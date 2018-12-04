@@ -141,13 +141,12 @@ def run_module():
                 re_nodes_list = nodes.findall(corosync_conf.read())
                 re_node_list_set = set()
                 if len(re_nodes_list) > 0:
-                    n_name = re.compile(r"ring0_addr\s*:\s*([\w.-]+)\s*", re.M)
+                    n_name = re.compile(r"ring[0-9]+_addr\s*:\s*([\w.-]+)\s*", re.M)
                     for node in re_nodes_list:
-                        n_name2 = None
-                        n_name2 = n_name.search(node)
-                        if n_name2:
-                            node_name = n_name2.group(1)
-                            re_node_list_set.add(node_name.rstrip())
+                        rings = None
+                        rings = n_name.findall(node)
+                        if rings:
+                            re_node_list_set.add(','.join(rings))
 
                 detected_node_list_set = re_node_list_set
             except IOError as e:

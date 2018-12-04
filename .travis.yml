@@ -32,6 +32,7 @@ script:
   - python -m py_compile library/pcs_constraint_order.py
   - python -m py_compile library/pcs_property.py
   - python -m py_compile library/pcs_resource.py
+  - python -m py_compile library/pcs_resource_defaults.py
 
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/

@@ -1,13 +1,25 @@
 #!/usr/bin/python
+# Copyright: (c) 2018, Ondrej Famera <ondrej-xa2iel8u@famera.cz>
+# GNU General Public License v3.0+ (see LICENSE-GPLv3.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = '''
 ---
-author: "Ondrej Famera <ondrej-xa2iel8u@famera.cz>"
+author: "Ondrej Famera (@OndrejHome)"
 module: pcs_auth
 short_description: Module for interacting with 'pcs auth'
 description:
   - module for authenticating nodes in pacemaker cluster using 'pcs auth' for RHEL/CentOS.
-version_added: "2.0"
+version_added: "2.4"
 options:
   state:
     description:
@@ -53,15 +65,18 @@ import os.path
 import json
 from distutils.spawn import find_executable
 
-def main():
+from ansible.module_utils.basic import AnsibleModule
+
+
+def run_module():
         module = AnsibleModule(
-                argument_spec = dict(
-                        state=dict(default="present", choices=['present', 'absent']),
-                        node_name=dict(required=True),
-                        username=dict(required=False, default="hacluster"),
-                        password=dict(required=False, no_log=True)
-                ),
-                supports_check_mode=True
+            argument_spec=dict(
+                state=dict(default="present", choices=['present', 'absent']),
+                node_name=dict(required=True),
+                username=dict(required=False, default="hacluster"),
+                password=dict(required=False, no_log=True)
+            ),
+            supports_check_mode=True
         )
 
         state = module.params['state']
@@ -76,7 +91,7 @@ def main():
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
         if os.path.isfile('/var/lib/pcsd/tokens'):
-            tokens_file = open('/var/lib/pcsd/tokens','r+')
+            tokens_file = open('/var/lib/pcsd/tokens', 'r+')
             # load JSON tokens
             tokens_data = json.load(tokens_file)
 
@@ -91,22 +106,26 @@ def main():
                     module.exit_json(changed=True)
                 else:
                     module.fail_json(msg="Failed to authenticate node " + node_name)
-        elif state == 'absent' and tokens_data and tokens_data['tokens'].has_key(node_name):
+        elif state == 'absent' and tokens_data and node_name in tokens_data['tokens']:
             result['changed'] = True
             if not module.check_mode:
                 del tokens_data['tokens'][node_name]
                 tokens_data['data_version'] += 1
                 # write the change into token file
                 tokens_file.seek(0)
-                json.dump(tokens_data,tokens_file,indent=4)
+                json.dump(tokens_data, tokens_file, indent=4)
                 tokens_file.truncate()
         else:
             result['changed'] = False
             module.exit_json(changed=False)
 
-        ## END of module
+        # END of module
         module.exit_json(**result)
 
-# import module snippets
-from ansible.module_utils.basic import *
-main()
+
+def main():
+    run_module()
+
+
+if __name__ == '__main__':
+    main()

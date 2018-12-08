@@ -85,7 +85,7 @@ EXAMPLES = '''
       node1-eth0.example.com,node1-eth1.example.com
       node2-eth0.example.com,node2-eth1.example.com
     state: present
-
+  run_once: True
 - name: Add new nodes to existing cluster
   pcs_cluster: node_list="existing-node-1 existing-node-2 new-node-3 new-node-4" cluster_name="test-cluster" allowed_node_changes="add"
   run_once: true

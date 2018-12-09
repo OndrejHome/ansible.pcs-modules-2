@@ -58,7 +58,7 @@ options:
     choices: ['none', 'add', 'remove']
 notes:
    - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
-   - Tested on Red Hat Enterprise Linux 7.3, 7.4
+   - Tested on Red Hat Enterprise Linux 7.3, 7.4, 7.6
    - "When adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to
      node that will stay in cluster, nodes cannot add themselves to cluster and node that removes
      themselves may not remove all needed cluster information
@@ -78,6 +78,14 @@ EXAMPLES = '''
     transport: 'udpu'
   run_once: true
 
+- name: Create cluster with redundant corosync links
+  pcs_cluster:
+    cluster_name: test-cluster
+    node_list: >
+      node1-eth0.example.com,node1-eth1.example.com
+      node2-eth0.example.com,node2-eth1.example.com
+    state: present
+  run_once: True
 - name: Add new nodes to existing cluster
   pcs_cluster: node_list="existing-node-1 existing-node-2 new-node-3 new-node-4" cluster_name="test-cluster" allowed_node_changes="add"
   run_once: true
@@ -141,13 +149,12 @@ def run_module():
                 re_nodes_list = nodes.findall(corosync_conf.read())
                 re_node_list_set = set()
                 if len(re_nodes_list) > 0:
-                    n_name = re.compile(r"ring0_addr\s*:\s*([\w.-]+)\s*", re.M)
+                    n_name = re.compile(r"ring[0-9]+_addr\s*:\s*([\w.-]+)\s*", re.M)
                     for node in re_nodes_list:
-                        n_name2 = None
-                        n_name2 = n_name.search(node)
-                        if n_name2:
-                            node_name = n_name2.group(1)
-                            re_node_list_set.add(node_name.rstrip())
+                        rings = None
+                        rings = n_name.findall(node)
+                        if rings:
+                            re_node_list_set.add(','.join(rings))
 
                 detected_node_list_set = re_node_list_set
             except IOError as e:

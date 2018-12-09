@@ -44,7 +44,8 @@ options:
 notes:
   - This module is (de)authenticating nodes only 1-way == authenticating node 1 agains
     node 2 doesn't mean that node 2 is authenticated agains node 1!
-  - tested on CentOS 6.8, 7.3
+  - Tested on CentOS 6.8, 7.3
+  - Tested on Red Hat Enterprise Linux 7.3, 7.4, 7.6
 '''
 
 EXAMPLES = '''

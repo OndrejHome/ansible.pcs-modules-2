@@ -43,6 +43,7 @@ options:
     required: false
 notes:
    - tested on CentOS 7.3
+   - Tested on Red Hat Enterprise Linux 7.6
 '''
 
 EXAMPLES = '''

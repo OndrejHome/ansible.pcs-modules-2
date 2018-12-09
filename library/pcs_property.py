@@ -48,10 +48,14 @@ notes:
 
 EXAMPLES = '''
 - name: set maintenance mode cluster property (enable maintenance mode)
-  pcs_property: name='maintenance-mode' value='true'
+  pcs_property:
+    name: 'maintenance-mode'
+    value: 'true'
 
 - name: unset maintenance mode cluster property (disable maintenance mode)
-  pcs_property: name='maintenance-mode' state='absent'
+  pcs_property:
+    name: 'maintenance-mode'
+    state: 'absent'
 '''
 
 import os.path

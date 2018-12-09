@@ -69,22 +69,34 @@ notes:
 
 EXAMPLES = '''
 - name: ensure Dummy('ocf:pacemaker:Dummy') resource with name 'test' is present
-  pcs_resource: name='test' resource_type='ocf:pacemaker:Dummy'
+  pcs_resource:
+    name: 'test'
+    resource_type: 'ocf:pacemaker:Dummy'
 
 - name: ensure that resource with name 'vip' is not present
-  pcs_resource: name='vip' state='absent'
+  pcs_resource:
+    name: 'vip'
+    state: 'absent'
 
 - name: ensure resource 'test2' of IPaddr2('ocf:heartbeat:IPaddr2') type exists an has 5 second monitor interval
-  pcs_resource: name='test2' resource_type='ocf:heartbeat:IPaddr2' options='ip=192.168.1.2 op monitor interval=5'
+  pcs_resource:
+    name: 'test2'
+    resource_type: 'ocf:heartbeat:IPaddr2'
+    options: 'ip=192.168.1.2 op monitor interval=5'
 
 - name: create resource in group 'testgrp'
-  pcs_resource: name='test3' resource_type='ocf:pacemaker:Dummy' options='--group testgrp'
+  pcs_resource:
+    name: 'test3'
+    resource_type: 'ocf:pacemaker:Dummy'
+    options: '--group testgrp'
 
 - name: create complex Master/Slave resource 'test-master' of 'ocf:pacemaker:Dummy' type
   pcs_resource:
-    name: "test"
-    resource_type: "ocf:pacemaker:Dummy"
-    options: "fake=some_value --master meta master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true op monitor interval=60s meta resource-stickiness=100"
+    name: 'test'
+    resource_type: 'ocf:pacemaker:Dummy'
+    options: >
+      fake=some_value --master meta master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+      op monitor interval=60s meta resource-stickiness=100
 '''
 
 # TODO if group exists and is not part of group, then specifying group won't put it into group

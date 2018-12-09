@@ -53,10 +53,15 @@ notes:
 
 EXAMPLES = '''
 - name: resource resA prefers to run on node1
-  pcs_constraint_location: resource='resA' node_name='node1'
+  pcs_constraint_location:
+    resource: 'resA'
+    node_name: 'node1'
 
 - name: resource resB avoids running on node2
-  pcs_constraint_location: resource='resB' node_name='node2' score='-INFINITY'
+  pcs_constraint_location:
+    resource: 'resB'
+    node_name: 'node2'
+    score: '-INFINITY'
 '''
 
 import os.path

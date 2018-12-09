@@ -53,16 +53,26 @@ notes:
 
 EXAMPLES = '''
 - name: set resource-stickiness=100 to be default for resources
-  pcs_resource_defaults: name='resource-stickiness' value='100'
+  pcs_resource_defaults:
+    name: 'resource-stickiness'
+    value: '100'
 
 - name: remove the 'resource-stickiness' resource default
-  pcs_resource_defaults: name='resource-stickiness' state='absent'
+  pcs_resource_defaults:
+    name: 'resource-stickiness'
+    state: 'absent'
 
 - name: set default operation timeout for resources to 60
-  pcs_resource_defaults: defaults_type='op' name='timeout' value='60'
+  pcs_resource_defaults:
+    defaults_type: 'op'
+    name: 'timeout'
+    value: '60'
 
 - name: remove the custom default operation timeout
-  pcs_resource_defaults: defaults_type='op' name='timeout' state='absent'
+  pcs_resource_defaults:
+    defaults_type: 'op'
+    name: 'timeout'
+    state: 'absent'
 '''
 
 import os.path

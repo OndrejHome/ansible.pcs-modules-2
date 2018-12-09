@@ -59,7 +59,7 @@ options:
 notes:
    - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
    - Tested on Red Hat Enterprise Linux 7.3, 7.4, 7.6
-   - "When adding/removing nodes, make sure to use 'run_once=true' and 'delegate_to' that points to
+   - "When adding/removing nodes, make sure to use 'run_once=True' and 'delegate_to' that points to
      node that will stay in cluster, nodes cannot add themselves to cluster and node that removes
      themselves may not remove all needed cluster information
      - https://bugzilla.redhat.com/show_bug.cgi?id=1360882"
@@ -67,8 +67,10 @@ notes:
 
 EXAMPLES = '''
 - name: Setup cluster
-  pcs_cluster: node_list="{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}" cluster_name="test-cluster"
-  run_once: true
+  pcs_cluster:
+    node_list: "{% for item in play_hosts %}{{ hostvars[item]['ansible_hostname'] }} {% endfor %}"
+    cluster_name: 'test-cluster'
+  run_once: True
 
 - name: Create cluster with totem token timeout of 5000 ms and UDP unicast transport protocol
   pcs_cluster:
@@ -76,28 +78,36 @@ EXAMPLES = '''
     cluster_name: 'test-cluster'
     token: 5000
     transport: 'udpu'
-  run_once: true
+  run_once: True
 
 - name: Create cluster with redundant corosync links
   pcs_cluster:
-    cluster_name: test-cluster
+    cluster_name: 'test-cluster'
     node_list: >
       node1-eth0.example.com,node1-eth1.example.com
       node2-eth0.example.com,node2-eth1.example.com
-    state: present
+    state: 'present'
   run_once: True
+
 - name: Add new nodes to existing cluster
-  pcs_cluster: node_list="existing-node-1 existing-node-2 new-node-3 new-node-4" cluster_name="test-cluster" allowed_node_changes="add"
-  run_once: true
+  pcs_cluster:
+    node_list: 'existing-node-1 existing-node-2 new-node-3 new-node-4'
+    cluster_name: 'test-cluster'
+    allowed_node_changes: 'add'
+  run_once: True
   delegate_to: existing-node-1
 
 - name: Remove nodes from existing cluster cluster (test-cluster= exiting-node-1, exiting-node-2, exiting-node-3, exiting-node-4)
-  pcs_cluster: node_list="existing-node-1 existing-node-2" cluster_name="test-cluster" allowed_node_changes="remove"
-  run_once: true
+  pcs_cluster:
+    node_list: 'existing-node-1 existing-node-2'
+    cluster_name: 'test-cluster'
+    allowed_node_changes: 'remove'
+  run_once: True
   delegate_to: existing-node-1
 
 - name: Destroy cluster on each node
-  pcs_cluster: state='absent'
+  pcs_cluster:
+    state: 'absent'
 '''
 
 import os.path

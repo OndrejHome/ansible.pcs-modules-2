@@ -50,14 +50,20 @@ notes:
 
 EXAMPLES = '''
 - name: Authorize node 'n1' with default user 'hacluster' and password 'testtest'
-  pcs_auth: node_name='n1' password='testtest'
+  pcs_auth:
+    node_name: 'n1'
+    password: 'testtest'
 
 - name: authorize all nodes in ansible play to each other
-  pcs_auth: node_name="{{ hostvars[item]['ansible_hostname'] }}" password='testtest'
+  pcs_auth:
+    node_name: "{{ hostvars[item]['ansible_hostname'] }}"
+    password: 'testtest'
   with_items: "{{ play_hosts }}"
 
 - name: de-authorize all nodes from each other in ansible play
-  pcs_auth: node_name="{{  hostvars[item]['ansible_hostname'] }}" state='absent'
+  pcs_auth:
+    node_name: "{{  hostvars[item]['ansible_hostname'] }}"
+    state: 'absent'
   with_items: "{{ play_hosts }}"
 
 '''

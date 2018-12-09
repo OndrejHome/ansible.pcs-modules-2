@@ -66,10 +66,15 @@ notes:
 
 EXAMPLES = '''
 - name: prefer resA and resB to run on same node
-  pcs_constraint_colocation: resource1='resA' resource2='resB'
+  pcs_constraint_colocation:
+    resource1: 'resA'
+    resource2: 'resB'
 
 - name: prefer resA to run on same node as Master resource of resB-master resource
-  pcs_constraint_colocation: resource1='resA' resource2='resB-master' resource2_role='Master'
+  pcs_constraint_colocation:
+    resource1: 'resA'
+    resource2: 'resB-master'
+    resource2_role: 'Master'
 '''
 
 import os.path

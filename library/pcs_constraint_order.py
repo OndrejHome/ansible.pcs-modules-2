@@ -71,19 +71,33 @@ notes:
 
 EXAMPLES = '''
 - name: start resA before starting resB
-  pcs_constraint_order: resource1='resA' resource2='resB'
+  pcs_constraint_order:
+    resource1: 'resA'
+    resource2: 'resB'
 
 - name: make Optional order constraint where resA should start before resB
-  pcs_constraint_order: resource1='resA' resource2='resB' kind='Optional'
+  pcs_constraint_order:
+    resource1: 'resA'
+    resource2: 'resB'
+    kind: 'Optional'
 
 - name: start resB after resA was promoted
-  pcs_constraint_order: resource1='resA' resource1_action='promote' resource2='resB'
+  pcs_constraint_order:
+    resource1: 'resA'
+    resource1_action: 'promote'
+    resource2: 'resB'
 
 - name: start resA before starting resB but don't require that resB stope before resA
-  pcs_constraint_order: resource1='resA' resource2='resB' symmetrical='false'
+  pcs_constraint_order:
+    resource1: 'resA'
+    resource2: 'resB'
+    symmetrical: 'false'
 
 - name: remove order constraint between resA and resB
-  pcs_constraint_order: resource='resA' resource2='resB' state='absent'
+  pcs_constraint_order:
+    resource1: 'resA'
+    resource2: 'resB'
+    state: 'absent'
 '''
 
 import os.path

@@ -101,6 +101,7 @@ def run_module():
             tokens_file = open('/var/lib/pcsd/tokens', 'r+')
             # load JSON tokens
             tokens_data = json.load(tokens_file)
+            result['tokens_data'] = tokens_data['tokens']
 
         rc, out, err = module.run_command('pcs cluster pcsd-status %(node_name)s' % module.params)
 
@@ -108,11 +109,13 @@ def run_module():
             # WARNING: this will also consider nodes to which we cannot connect as unauthorized
             result['changed'] = True
             if not module.check_mode:
-                rc, out, err = module.run_command('pcs cluster auth %(node_name)s -u %(username)s -p %(password)s --local' % module.params)
+                cmd_auth = 'pcs cluster auth %(node_name)s -u %(username)s -p %(password)s --local' % module.params
+                rc, out, err = module.run_command(cmd_auth)
                 if rc == 0:
-                    module.exit_json(changed=True)
+                    module.exit_json(**result)
                 else:
-                    module.fail_json(msg="Failed to authenticate node " + node_name)
+                    module.fail_json(msg="Failed to authenticate node using command '" + cmd_auth + "'", output=out, error=err)
+
         elif state == 'absent' and tokens_data and node_name in tokens_data['tokens']:
             result['changed'] = True
             if not module.check_mode:
@@ -124,7 +127,7 @@ def run_module():
                 tokens_file.truncate()
         else:
             result['changed'] = False
-            module.exit_json(changed=False)
+            module.exit_json(**result)
 
         # END of module
         module.exit_json(**result)

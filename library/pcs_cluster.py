@@ -42,12 +42,13 @@ options:
     required: false
   transport:
     description:
-      - "'default' - use default transport protocol ('udp' in CentOS/RHEL 6, 'udpu' in CentOS/RHEL 7)"
+      - "'default' - use default transport protocol ('udp' in CentOS/RHEL 6, 'udpu' in CentOS/RHEL 7), 'knet' in Fedora 29"
       - "'udp' - use UDP multicast protocol"
       - "'udpu' - use UDP unicast protocol"
+      - "'knet' - use KNET protocol"
     required: false
     default: default
-    choices: ['default', 'udp', 'udpu']
+    choices: ['default', 'udp', 'udpu', 'knet']
   allowed_node_changes:
     description:
       - "'none' - node list must match existing cluster if cluster should be present"
@@ -59,6 +60,7 @@ options:
 notes:
    - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
    - Tested on Red Hat Enterprise Linux 7.3, 7.4, 7.6
+   - Experimental support on Fedora 29 with pcs-0.10
    - "When adding/removing nodes, make sure to use 'run_once=True' and 'delegate_to' that points to
      node that will stay in cluster, nodes cannot add themselves to cluster and node that removes
      themselves may not remove all needed cluster information
@@ -124,7 +126,7 @@ def run_module():
                 node_list=dict(required=False),
                 cluster_name=dict(required=False),
                 token=dict(required=False, type='int'),
-                transport=dict(required=False, default="default", choices=['default', 'udp', 'udpu']),
+                transport=dict(required=False, default="default", choices=['default', 'udp', 'udpu', 'knet']),
                 allowed_node_changes=dict(required=False, default="none", choices=['none', 'add', 'remove']),
             ),
             supports_check_mode=True
@@ -139,6 +141,13 @@ def run_module():
 
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
+
+        # get the pcs major.minor version
+        rc, out, err = module.run_command('pcs --version')
+        if rc == 0:
+            pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
+        else:
+            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + error)
 
         # /var/lib/pacemaker/cib/cib.xml exists on cluster that were at least once started
         cib_xml_exists = os.path.isfile('/var/lib/pacemaker/cib/cib.xml')
@@ -174,9 +183,16 @@ def run_module():
         if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
             result['changed'] = True
             # create cluster from node list that was provided to module
-            module.params['token_param'] = '' if (not module.params['token']) else '--token %(token)s' % module.params
-            module.params['transport_param'] = '' if (module.params['transport'] == 'default') else '--transport %(transport)s' % module.params
-            cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
+            if pcs_version == '0.9':
+                module.params['token_param'] = '' if (not module.params['token']) else '--token %(token)s' % module.params
+                module.params['transport_param'] = '' if (module.params['transport'] == 'default') else '--transport %(transport)s' % module.params
+                cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
+            elif pcs_version == '0.10':
+                module.params['token_param'] = '' if (not module.params['token']) else 'token %(token)s' % module.params
+                module.params['transport_param'] = '' if (module.params['transport'] == 'default') else 'transport %(transport)s' % module.params
+                cmd = 'pcs cluster setup %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
+            else:
+                module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9 and 0.10 are supported.")
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd)
                 if rc == 0:

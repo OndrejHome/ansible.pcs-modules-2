@@ -120,6 +120,7 @@ def run_module():
             result['changed'] = True
             if not module.check_mode:
                 del tokens_data['tokens'][node_name]
+                del tokens_data['ports'][node_name]
                 tokens_data['data_version'] += 1
                 # write the change into token file
                 tokens_file.seek(0)

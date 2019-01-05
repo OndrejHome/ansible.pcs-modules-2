@@ -59,6 +59,7 @@ EXAMPLES = '''
 '''
 
 import os.path
+import re
 from distutils.spawn import find_executable
 from ansible.module_utils.basic import AnsibleModule
 
@@ -95,16 +96,35 @@ def run_module():
         rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
         properties = {}
         if rc == 0:
-            # we are stripping first and last line as they doesn't contain properties
-            for row in out.split('\n')[1:-1]:
-                tmp = row.lstrip().split(':')
-                properties[tmp[0]] = tmp[1].lstrip()
+            # indicator in which part of parsing we are
+            property_type = None
+            # we are stripping last line as they doesn't contain properties
+            for row in out.split('\n')[0:-1]:
+                # based on row we see the section to either cluster or node properties
+                if row == 'Cluster Properties:':
+                    property_type = 'cluster'
+                    properties['cluster'] = {}
+                elif row == 'Node Attributes:':
+                    property_type = 'node'
+                    properties['node'] = {}
+                else:
+                    # when identifier of section is not preset we are at the property
+                    tmp = row.lstrip().split(':')
+                    if property_type == 'cluster':
+                        properties['cluster'][tmp[0]] = tmp[1].lstrip()
+                    elif property_type == 'node':
+                        properties['node'][tmp[0]] = {}
+                        # FIXME: this matches only properties which values doesn't contain spaces
+                        match_node_properties = re.compile(r"(\w+=\w+)\s*")
+                        matched_properties = match_node_properties.findall(':'.join(tmp[1:]))
+                        for prop in matched_properties:
+                            properties['node'][tmp[0]][prop.split('=')[0]] = prop.split('=')[1]
         else:
             module.fail_json(msg='Failed to load properties from cluster. Is cluster running?')
 
         result['detected_properties'] = properties
 
-        if state == 'present' and (name not in properties or properties[name] != value):
+        if state == 'present' and (name not in properties['cluster'] or properties['cluster'][name] != value):
             # property not found or having a different value
             result['changed'] = True
             if not module.check_mode:
@@ -115,7 +135,7 @@ def run_module():
                 else:
                     module.fail_json(msg="Failed to set property with cmd : '" + cmd_set + "'", output=out, error=err)
 
-        elif state == 'absent' and name in properties:
+        elif state == 'absent' and name in properties['cluster']:
             # property found but it should not be set
             result['changed'] = True
             if not module.check_mode:

@@ -38,7 +38,7 @@ options:
       - class of cluster resource
     required: true
     default: 'ocf'
-    choices: ['ocf', 'systemd', 'stonith']
+    choices: ['ocf', 'systemd', 'stonith', 'master', 'promotable']
   resource_type:
     description:
       - cluster resource type
@@ -59,6 +59,11 @@ options:
     description:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
       - "This module requires the file to already contain cluster configuration."
+    required: false
+  child_name:
+    description:
+      - "define custom name of child resource when creating multistate resource ('master' or 'promotable' resource_class)."
+      - "If not specified then the child resource name will have for of name+'-child'."
     required: false
 notes:
    - tested on CentOS 6.8, 7.3
@@ -96,12 +101,22 @@ EXAMPLES = '''
     resource_type: 'ocf:pacemaker:Dummy'
     options: '--group testgrp'
 
-- name: create complex Master/Slave resource 'test-master' of 'ocf:pacemaker:Dummy' type
+- name: create multistate (Master/Slave) resource 'test' of 'ocf:pacemaker:Stateful' type - pcs-0.9
   pcs_resource:
     name: 'test'
-    resource_type: 'ocf:pacemaker:Dummy'
+    resource_type: 'ocf:pacemaker:Stateful'
+    resource_class: 'master'
     options: >
       fake=some_value --master meta master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+      op monitor interval=60s meta resource-stickiness=100
+
+- name: create multistate (Promotable) resource 'test' of 'ocf:pacemaker:Stateful' type - pcs-0.10
+  pcs_resource:
+    name: 'test'
+    resource_type: 'ocf:pacemaker:Stateful'
+    resource_class: 'promotable'
+    options: >
+      fake=some_value promotable meta promotable-max=1 promotable-node-max=1 clone-max=2 clone-node-max=1 notify=true
       op monitor interval=60s meta resource-stickiness=100
 '''
 
@@ -112,6 +127,7 @@ import sys
 import os.path
 import xml.etree.ElementTree as ET
 import tempfile
+import re
 from distutils.spawn import find_executable
 from ansible.module_utils.basic import AnsibleModule
 
@@ -193,16 +209,30 @@ def find_resource(cib, resource_id):
         return my_resource
 
 
+def rename_multistate_element(multistate_resource, resource_name, child_name, resource_suffix):
+        multistate_resource.set('id', resource_name)
+        # search for meta_attributes tag
+        for elem in list(multistate_resource):
+            if elem.tag == 'meta_attributes':
+                new_meta_id = re.sub('^' + child_name+resource_suffix, resource_name, elem.attrib.get('id'))
+                elem.set('id', new_meta_id)
+                # replace ID of all nvpairs inside of this meta_attributes
+                for nvpair in list(elem):
+                    new_nvpair_id = re.sub('^' + child_name+resource_suffix, resource_name, nvpair.attrib.get('id'))
+                    nvpair.set('id', new_nvpair_id)
+
+
 def run_module():
         module = AnsibleModule(
             argument_spec=dict(
                 state=dict(default="present", choices=['present', 'absent']),
                 name=dict(required=True),
-                resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith']),
+                resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith', 'master', 'promotable']),
                 resource_type=dict(required=False),
                 options=dict(default="", required=False),
                 force_resource_update=dict(default=False, type='bool', required=False),
                 cib_file=dict(required=False),
+                child_name=dict(required=False),
             ),
             supports_check_mode=True
         )
@@ -211,6 +241,10 @@ def run_module():
         resource_name = module.params['name']
         resource_class = module.params['resource_class']
         cib_file = module.params['cib_file']
+        if 'child_name' in module.params and module.params['child_name'] is None:
+            module.params['child_name'] = resource_name+'-child'
+        child_name = module.params['child_name']
+        resource_options = module.params['options']
 
         if state == 'present' and (not module.params['resource_type']):
             module.fail_json(msg='When creating cluster resource you must specify the resource_type')
@@ -218,6 +252,19 @@ def run_module():
 
         if find_executable('pcs') is None:
             module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
+
+        # get the pcs major.minor version
+        rc, out, err = module.run_command('pcs --version')
+        if rc == 0:
+            pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
+        else:
+            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + error)
+
+        ## check if 'master' and 'promotable' classes have the needed keyword in options
+        if resource_class == 'master' and not ('--master' in resource_options or 'master' in resource_options):
+            module.fail_json(msg='When creating Master/Slave resource you must specify keyword "master" or "--master" in "options"')
+        if resource_class == 'promotable' and 'promotable' not in resource_options:
+            module.fail_json(msg='When creating promotable resource you must specify keyword "promotable" in "options"')
 
         module.params['cib_file_param'] = ''
         if cib_file is not None:
@@ -250,6 +297,9 @@ def run_module():
             if not module.check_mode:
                 if resource_class == 'stonith':
                     cmd = 'pcs %(cib_file_param)s stonith create %(name)s %(resource_type)s %(options)s' % module.params
+                elif resource_class == 'master' or resource_class == 'promotable':
+                    # we first create Master/Slave or Promotable resource with child_name and later rename it
+                    cmd = 'pcs %(cib_file_param)s resource create %(child_name)s %(resource_type)s %(options)s' % module.params
                 else:
                     cmd = 'pcs %(cib_file_param)s resource create %(name)s %(resource_type)s %(options)s' % module.params
                 rc, out, err = module.run_command(cmd)
@@ -257,6 +307,35 @@ def run_module():
                     # EL6: special retry when we failed to create resource because of timer waiting on cib expired
                     rc, out, err = module.run_command(cmd)
                 if rc == 0:
+                    if resource_class == 'master' or resource_class == 'promotable':
+                        ## rename the resource to desirable name
+                        rc, out, err = module.run_command('pcs cluster cib')
+                        if rc == 0:
+                            updated_cib_root = ET.fromstring(out)
+                            multistate_resource = None
+                            updated_cib_resources = updated_cib_root.find('./configuration/resources')
+                            resource_suffix = '-master' if pcs_version == '0.9' else '-clone'
+                            multistate_resource = find_resource(updated_cib_resources, child_name + resource_suffix)
+                            if multistate_resource is not None:
+                                rename_multistate_element(multistate_resource, resource_name, child_name, resource_suffix)
+                                ##
+                                # when not using cib_file then we continue preparing changes for cib-push into running cluster
+                                new_cib = ET.ElementTree(updated_cib_root)
+                                new_cib_fd, new_cib_path = tempfile.mkstemp()
+                                module.add_cleanup_file(new_cib_path)
+                                new_cib.write(new_cib_path)
+                                push_scope = 'scope=resources' if module.params['force_resource_update'] else ''
+                                push_cmd = 'pcs cluster cib-push ' + push_scope + ' ' + new_cib_path
+                                rc, out, err = module.run_command(push_cmd)
+                                if rc == 0:
+                                    module.exit_json(changed=True)
+                                else:
+                                    module.fail_json(msg="Failed to push updated configuration for multistate resource to cluster using command '" + push_cmd + "'", output=out, error=err)
+                                    #FIXME consider rolling back the creation of the multistate resource when we have failed to update it
+                            else:
+                                module.fail_json(msg="Failed to detect multistate resource after creating it with cmd '" + cmd + "'!", output=out, error=err, previous_cib=current_cib)
+
+
                     module.exit_json(changed=True)
                 else:
                     module.fail_json(msg="Failed to create resource using command '" + cmd + "'", output=out, error=err)
@@ -271,10 +350,31 @@ def run_module():
             # we must be sure that clean_cib_path is empty
             if resource_class == 'stonith':
                 cmd = 'pcs -f ' + clean_cib_path + ' stonith create %(name)s %(resource_type)s %(options)s' % module.params
+            elif resource_class == 'master' or resource_class == 'promotable':
+                # we first create Master/Slave or Promotable resource with child_name and later rename it
+                cmd = 'pcs -f ' + clean_cib_path + ' resource create %(child_name)s %(resource_type)s %(options)s' % module.params
             else:
                 cmd = 'pcs -f ' + clean_cib_path + ' resource create %(name)s %(resource_type)s %(options)s' % module.params
             rc, out, err = module.run_command(cmd)
             if rc == 0:
+                if resource_class == 'master' or resource_class == 'promotable':
+                    ## deal with multistate resources
+                    clean_cib = ET.parse(clean_cib_path)
+                    clean_cib_root = clean_cib.getroot()
+                    multistate_resource = None
+                    updated_cib_resources = clean_cib_root.find('./configuration/resources')
+                    resource_suffix = '-master' if pcs_version == '0.9' else '-clone'
+                    multistate_resource = find_resource(updated_cib_resources, child_name + resource_suffix)
+                    if multistate_resource is not None:
+                        rename_multistate_element(multistate_resource, resource_name, child_name, resource_suffix)
+                        # we try to write the changes into temporary cib_file
+                        try:
+                            clean_cib.write(clean_cib_path)
+                        except Exception as e:
+                            module.fail_json(msg="Error encountered writing intermediate multistate result to clean_cib_path - %s" % (e))
+                    else:
+                        module.fail_json(msg="Failed to detect intermediate multistate resource after creating it with cmd '" + cmd + "'!", output=out, error=err, previous_cib=current_cib)
+
                 # we have a comparable resource created in clean cluster, so lets select it and compare it
                 clean_cib = ET.parse(clean_cib_path)
                 clean_cib_root = clean_cib.getroot()

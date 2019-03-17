@@ -73,6 +73,12 @@ EXAMPLES = '''
     name: 'test'
     resource_type: 'ocf:pacemaker:Dummy'
 
+- name: create 'stonith' class resource 'kdump' of type 'fence_kdump'
+  pcs_resource:
+    name: 'kdump'
+    resource_type: 'fence_kdump'
+    resource_class: 'stonith'
+
 - name: ensure that resource with name 'vip' is not present
   pcs_resource:
     name: 'vip'

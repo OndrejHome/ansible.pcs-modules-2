@@ -112,7 +112,10 @@ def run_module():
             module.params['cib_file_param'] = '-f ' + cib_file
 
         # get property list from running cluster
-        rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
+        if node is not None:
+            rc, out, err = module.run_command('pcs %(cib_file_param)s node attribute' % module.params)
+        else:
+            rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
         properties = {}
         if rc == 0:
             # indicator in which part of parsing we are
@@ -150,7 +153,7 @@ def run_module():
             if node is None and (name not in properties['cluster'] or properties['cluster'][name] != value):
                 cmd_set = 'pcs %(cib_file_param)s property set %(name)s=%(value)s' % module.params
             elif node is not None and (node not in properties['node'] or name not in properties['node'][node] or properties['node'][node][name] != value):
-                cmd_set = 'pcs %(cib_file_param)s property set --node %(node)s %(name)s=%(value)s' % module.params
+                cmd_set = 'pcs %(cib_file_param)s node attribute %(node)s %(name)s=%(value)s' % module.params
             else:
                 result['changed'] = False
             if not module.check_mode and result['changed']:
@@ -167,7 +170,7 @@ def run_module():
             if node is None and name in properties['cluster']:
                 cmd_unset = 'pcs %(cib_file_param)s property unset %(name)s' % module.params
             elif node is not None and node in properties['node'] and name in properties['node'][node]:
-                cmd_unset = 'pcs %(cib_file_param)s property unset --node %(node)s %(name)s' % module.params
+                cmd_unset = 'pcs %(cib_file_param)s node attribute %(node)s %(name)s=' % module.params
             else:
                 result['changed'] = False
             if not module.check_mode and result['changed']:

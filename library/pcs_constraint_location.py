@@ -48,7 +48,8 @@ options:
       - "This module requires the file to already contain cluster configuration."
     required: false
 notes:
-   - tested on CentOS 7.3
+   - tested on CentOS 7.6, Fedora 29
+   - specifying non-existing node_name for Fedora 29 produces error. Use only existing node names.
 '''
 
 EXAMPLES = '''
@@ -57,11 +58,24 @@ EXAMPLES = '''
     resource: 'resA'
     node_name: 'node1'
 
+- name: remove constraint where resource resA prefers to run on node1
+  pcs_constraint_location:
+    resource: 'resA'
+    node_name: 'node1'
+    state: 'absent'
+
 - name: resource resB avoids running on node2
   pcs_constraint_location:
     resource: 'resB'
     node_name: 'node2'
     score: '-INFINITY'
+
+- name: remove constraint where resource resB avoids running on node2
+  pcs_constraint_location:
+    resource: 'resB'
+    node_name: 'node2'
+    score: '-INFINITY'
+    state: 'absent'
 '''
 
 import os.path

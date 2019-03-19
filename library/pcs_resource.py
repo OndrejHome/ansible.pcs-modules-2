@@ -214,11 +214,11 @@ def rename_multistate_element(multistate_resource, resource_name, child_name, re
         # search for meta_attributes tag
         for elem in list(multistate_resource):
             if elem.tag == 'meta_attributes':
-                new_meta_id = re.sub('^' + child_name+resource_suffix, resource_name, elem.attrib.get('id'))
+                new_meta_id = re.sub('^' + child_name + resource_suffix, resource_name, elem.attrib.get('id'))
                 elem.set('id', new_meta_id)
                 # replace ID of all nvpairs inside of this meta_attributes
                 for nvpair in list(elem):
-                    new_nvpair_id = re.sub('^' + child_name+resource_suffix, resource_name, nvpair.attrib.get('id'))
+                    new_nvpair_id = re.sub('^' + child_name + resource_suffix, resource_name, nvpair.attrib.get('id'))
                     nvpair.set('id', new_nvpair_id)
 
 
@@ -242,7 +242,7 @@ def run_module():
         resource_class = module.params['resource_class']
         cib_file = module.params['cib_file']
         if 'child_name' in module.params and module.params['child_name'] is None:
-            module.params['child_name'] = resource_name+'-child'
+            module.params['child_name'] = resource_name + '-child'
         child_name = module.params['child_name']
         resource_options = module.params['options']
 
@@ -260,7 +260,7 @@ def run_module():
         else:
             module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
-        ## check if 'master' and 'promotable' classes have the needed keyword in options
+        # check if 'master' and 'promotable' classes have the needed keyword in options
         if resource_class == 'master' and not ('--master' in resource_options or 'master' in resource_options):
             module.fail_json(msg='When creating Master/Slave resource you must specify keyword "master" or "--master" in "options"')
         if resource_class == 'promotable' and 'promotable' not in resource_options:
@@ -308,7 +308,7 @@ def run_module():
                     rc, out, err = module.run_command(cmd)
                 if rc == 0:
                     if resource_class == 'master' or resource_class == 'promotable':
-                        ## rename the resource to desirable name
+                        # rename the resource to desirable name
                         rc, out, err = module.run_command('pcs cluster cib')
                         if rc == 0:
                             updated_cib_root = ET.fromstring(out)
@@ -330,7 +330,7 @@ def run_module():
                                 if rc == 0:
                                     module.exit_json(changed=True)
                                 else:
-                                    ## rollback the failed rename by deleting the multistate resource
+                                    # rollback the failed rename by deleting the multistate resource
                                     cmd = 'pcs %(cib_file_param)s resource delete %(child_name)s' % module.params
                                     rc2, out2, err2 = module.run_command(cmd)
                                     if rc2 == 0:
@@ -339,8 +339,6 @@ def run_module():
                                         module.fail_json(msg="Failed to delete resource after unsuccessful multistate resource configuration update using command '" + cmd + "'", output=out2, error=err2)
                             else:
                                 module.fail_json(msg="Failed to detect multistate resource after creating it with cmd '" + cmd + "'!", output=out, error=err, previous_cib=current_cib)
-
-
                     module.exit_json(changed=True)
                 else:
                     module.fail_json(msg="Failed to create resource using command '" + cmd + "'", output=out, error=err)
@@ -363,7 +361,7 @@ def run_module():
             rc, out, err = module.run_command(cmd)
             if rc == 0:
                 if resource_class == 'master' or resource_class == 'promotable':
-                    ## deal with multistate resources
+                    # deal with multistate resources
                     clean_cib = ET.parse(clean_cib_path)
                     clean_cib_root = clean_cib.getroot()
                     multistate_resource = None

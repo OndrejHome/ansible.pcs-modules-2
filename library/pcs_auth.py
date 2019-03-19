@@ -103,7 +103,7 @@ def run_module():
         if rc == 0:
             pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
         else:
-            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + error)
+            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
         if os.path.isfile('/var/lib/pcsd/tokens') and pcs_version == '0.9':
             tokens_file = open('/var/lib/pcsd/tokens', 'r+')

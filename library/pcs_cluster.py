@@ -147,7 +147,7 @@ def run_module():
         if rc == 0:
             pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
         else:
-            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + error)
+            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
         # /var/lib/pacemaker/cib/cib.xml exists on cluster that were at least once started
         cib_xml_exists = os.path.isfile('/var/lib/pacemaker/cib/cib.xml')

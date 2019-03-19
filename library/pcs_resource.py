@@ -258,7 +258,7 @@ def run_module():
         if rc == 0:
             pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
         else:
-            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + error)
+            module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
         ## check if 'master' and 'promotable' classes have the needed keyword in options
         if resource_class == 'master' and not ('--master' in resource_options or 'master' in resource_options):

@@ -86,104 +86,104 @@ from ansible.module_utils.basic import AnsibleModule
 
 
 def run_module():
-        module = AnsibleModule(
-            argument_spec=dict(
-                state=dict(default="present", choices=['present', 'absent']),
-                resource=dict(required=True),
-                node_name=dict(required=True),
-                score=dict(required=False, default="INFINITY"),
-                cib_file=dict(required=False),
-            ),
-            supports_check_mode=True
-        )
+    module = AnsibleModule(
+        argument_spec=dict(
+            state=dict(default="present", choices=['present', 'absent']),
+            resource=dict(required=True),
+            node_name=dict(required=True),
+            score=dict(required=False, default="INFINITY"),
+            cib_file=dict(required=False),
+        ),
+        supports_check_mode=True
+    )
 
-        state = module.params['state']
-        resource = module.params['resource']
-        node_name = module.params['node_name']
-        score = module.params['score']
-        cib_file = module.params['cib_file']
+    state = module.params['state']
+    resource = module.params['resource']
+    node_name = module.params['node_name']
+    score = module.params['score']
+    cib_file = module.params['cib_file']
 
-        result = {}
+    result = {}
 
-        if find_executable('pcs') is None:
-            module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
+    if find_executable('pcs') is None:
+        module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
-        module.params['cib_file_param'] = ''
-        if cib_file is not None:
-            # use cib_file if specified
-            if os.path.isfile(cib_file):
-                try:
-                    current_cib = ET.parse(cib_file)
-                except Exception as e:
-                    module.fail_json(msg="Error encountered parsing the cib_file - %s" % (e))
-                current_cib_root = current_cib.getroot()
-                module.params['cib_file_param'] = '-f ' + cib_file
-            else:
-                module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
+    module.params['cib_file_param'] = ''
+    if cib_file is not None:
+        # use cib_file if specified
+        if os.path.isfile(cib_file):
+            try:
+                current_cib = ET.parse(cib_file)
+            except Exception as e:
+                module.fail_json(msg="Error encountered parsing the cib_file - %s" % (e))
+            current_cib_root = current_cib.getroot()
+            module.params['cib_file_param'] = '-f ' + cib_file
         else:
-            # get running cluster configuration
-            rc, out, err = module.run_command('pcs cluster cib')
+            module.fail_json(msg="%(cib_file)s is not a file or doesn't exists" % module.params)
+    else:
+        # get running cluster configuration
+        rc, out, err = module.run_command('pcs cluster cib')
+        if rc == 0:
+            current_cib_root = ET.fromstring(out)
+        else:
+            module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
+
+    # try to find the constraint we have defined
+    constraint = None
+    constraints = current_cib_root.findall("./configuration/constraints/rsc_location")
+    for constr in constraints:
+        # constraint is considered found if we see resource and node as got through attributes
+        if constr.attrib.get('rsc') == resource and constr.attrib.get('node') == node_name:
+            constraint = constr
+            break
+
+    # location constraint creation command
+    cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
+
+    # location constriaint deleter command
+    if constraint is not None:
+        cmd_delete = 'pcs %(cib_file_param)s constraint delete ' % module.params + constraint.attrib.get('id')
+
+    if state == 'present' and constraint is None:
+        # constraint should be present, but we don't see it in configuration - lets create it
+        result['changed'] = True
+        if not module.check_mode:
+            rc, out, err = module.run_command(cmd_create)
             if rc == 0:
-                current_cib_root = ET.fromstring(out)
+                module.exit_json(**result)
             else:
-                module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
+                module.fail_json(msg="Failed to create constraint with cmd: '" + cmd_create + "'", output=out, error=err)
 
-        # try to find the constraint we have defined
-        constraint = None
-        constraints = current_cib_root.findall("./configuration/constraints/rsc_location")
-        for constr in constraints:
-            # constraint is considered found if we see resource and node as got through attributes
-            if constr.attrib.get('rsc') == resource and constr.attrib.get('node') == node_name:
-                constraint = constr
-                break
-
-        # location constraint creation command
-        cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
-
-        # location constriaint deleter command
-        if constraint is not None:
-            cmd_delete = 'pcs %(cib_file_param)s constraint delete ' % module.params + constraint.attrib.get('id')
-
-        if state == 'present' and constraint is None:
-            # constraint should be present, but we don't see it in configuration - lets create it
-            result['changed'] = True
-            if not module.check_mode:
-                rc, out, err = module.run_command(cmd_create)
-                if rc == 0:
-                    module.exit_json(**result)
-                else:
-                    module.fail_json(msg="Failed to create constraint with cmd: '" + cmd_create + "'", output=out, error=err)
-
-        elif state == 'present' and constraint is not None:
-            # constraint should be present and we see similar constraint so lets check if it is same
-            if score != constraint.attrib.get('score'):
-                result['changed'] = True
-                if not module.check_mode:
-                    rc, out, err = module.run_command(cmd_delete)
-                    if rc != 0:
-                        module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd_delete + "'", output=out, error=err)
-                    else:
-                        rc, out, err = module.run_command(cmd_create)
-                        if rc == 0:
-                            module.exit_json(**result)
-                        else:
-                            module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err)
-
-        elif state == 'absent' and constraint is not None:
-            # constraint should not be present but we have found something - lets remove that
+    elif state == 'present' and constraint is not None:
+        # constraint should be present and we see similar constraint so lets check if it is same
+        if score != constraint.attrib.get('score'):
             result['changed'] = True
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd_delete)
-                if rc == 0:
-                    module.exit_json(**result)
+                if rc != 0:
+                    module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd_delete + "'", output=out, error=err)
                 else:
-                    module.fail_json(msg="Failed to delete constraint with cmd: '" + cmd_delete + "'", output=out, error=err)
-        else:
-            # constraint should not be present and is not there, nothing to do
-            result['changed'] = False
+                    rc, out, err = module.run_command(cmd_create)
+                    if rc == 0:
+                        module.exit_json(**result)
+                    else:
+                        module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err)
 
-        # END of module
-        module.exit_json(**result)
+    elif state == 'absent' and constraint is not None:
+        # constraint should not be present but we have found something - lets remove that
+        result['changed'] = True
+        if not module.check_mode:
+            rc, out, err = module.run_command(cmd_delete)
+            if rc == 0:
+                module.exit_json(**result)
+            else:
+                module.fail_json(msg="Failed to delete constraint with cmd: '" + cmd_delete + "'", output=out, error=err)
+    else:
+        # constraint should not be present and is not there, nothing to do
+        result['changed'] = False
+
+    # END of module
+    module.exit_json(**result)
 
 
 def main():

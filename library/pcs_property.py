@@ -82,106 +82,106 @@ from ansible.module_utils.basic import AnsibleModule
 
 
 def run_module():
-        module = AnsibleModule(
-            argument_spec=dict(
-                state=dict(default="present", choices=['present', 'absent']),
-                name=dict(required=True),
-                node=dict(required=False),
-                value=dict(required=False),
-                cib_file=dict(required=False),
-            ),
-            supports_check_mode=True
-        )
+    module = AnsibleModule(
+        argument_spec=dict(
+            state=dict(default="present", choices=['present', 'absent']),
+            name=dict(required=True),
+            node=dict(required=False),
+            value=dict(required=False),
+            cib_file=dict(required=False),
+        ),
+        supports_check_mode=True
+    )
 
-        state = module.params['state']
-        name = module.params['name']
-        value = module.params['value']
-        node = module.params['node']
-        cib_file = module.params['cib_file']
+    state = module.params['state']
+    name = module.params['name']
+    value = module.params['value']
+    node = module.params['node']
+    cib_file = module.params['cib_file']
 
-        result = {}
+    result = {}
 
-        if find_executable('pcs') is None:
-            module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
+    if find_executable('pcs') is None:
+        module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
-        if state == 'present' and value is None:
-            module.fail_json(msg="To set property 'value' must be specified.")
+    if state == 'present' and value is None:
+        module.fail_json(msg="To set property 'value' must be specified.")
 
-        module.params['cib_file_param'] = ''
-        if cib_file is not None and os.path.isfile(cib_file):
-            module.params['cib_file_param'] = '-f ' + cib_file
+    module.params['cib_file_param'] = ''
+    if cib_file is not None and os.path.isfile(cib_file):
+        module.params['cib_file_param'] = '-f ' + cib_file
 
-        # get property list from running cluster
-        if node is not None:
-            rc, out, err = module.run_command('pcs %(cib_file_param)s node attribute' % module.params)
-        else:
-            rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
-        properties = {}
-        if rc == 0:
-            # indicator in which part of parsing we are
-            property_type = None
-            properties['cluster'] = {}
-            properties['node'] = {}
-            # we are stripping last line as they doesn't contain properties
-            for row in out.split('\n')[0:-1]:
-                # based on row we see the section to either cluster or node properties
-                if row == 'Cluster Properties:':
-                    property_type = 'cluster'
-                elif row == 'Node Attributes:':
-                    property_type = 'node'
-                else:
-                    # when identifier of section is not preset we are at the property
-                    tmp = row.lstrip().split(':')
-                    if property_type == 'cluster':
-                        properties['cluster'][tmp[0]] = tmp[1].lstrip()
-                    elif property_type == 'node':
-                        properties['node'][tmp[0]] = {}
-                        # FIXME: this matches only properties which values doesn't contain spaces
-                        match_node_properties = re.compile(r"(\w+=\w+)\s*")
-                        matched_properties = match_node_properties.findall(':'.join(tmp[1:]))
-                        for prop in matched_properties:
-                            properties['node'][tmp[0]][prop.split('=')[0]] = prop.split('=')[1]
-        else:
-            module.fail_json(msg='Failed to load properties from cluster. Is cluster running?')
-
-        result['detected_properties'] = properties
-
-        if state == 'present':
-            cmd_set = ''
-            result['changed'] = True
-            # property not found or having a different value
-            if node is None and (name not in properties['cluster'] or properties['cluster'][name] != value):
-                cmd_set = 'pcs %(cib_file_param)s property set %(name)s=%(value)s' % module.params
-            elif node is not None and (node not in properties['node'] or name not in properties['node'][node] or properties['node'][node][name] != value):
-                cmd_set = 'pcs %(cib_file_param)s node attribute %(node)s %(name)s=%(value)s' % module.params
+    # get property list from running cluster
+    if node is not None:
+        rc, out, err = module.run_command('pcs %(cib_file_param)s node attribute' % module.params)
+    else:
+        rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
+    properties = {}
+    if rc == 0:
+        # indicator in which part of parsing we are
+        property_type = None
+        properties['cluster'] = {}
+        properties['node'] = {}
+        # we are stripping last line as they doesn't contain properties
+        for row in out.split('\n')[0:-1]:
+            # based on row we see the section to either cluster or node properties
+            if row == 'Cluster Properties:':
+                property_type = 'cluster'
+            elif row == 'Node Attributes:':
+                property_type = 'node'
             else:
-                result['changed'] = False
-            if not module.check_mode and result['changed']:
-                rc, out, err = module.run_command(cmd_set)
-                if rc == 0:
-                    module.exit_json(**result)
-                else:
-                    module.fail_json(msg="Failed to set property with cmd : '" + cmd_set + "'", output=out, error=err)
+                # when identifier of section is not preset we are at the property
+                tmp = row.lstrip().split(':')
+                if property_type == 'cluster':
+                    properties['cluster'][tmp[0]] = tmp[1].lstrip()
+                elif property_type == 'node':
+                    properties['node'][tmp[0]] = {}
+                    # FIXME: this matches only properties which values doesn't contain spaces
+                    match_node_properties = re.compile(r"(\w+=\w+)\s*")
+                    matched_properties = match_node_properties.findall(':'.join(tmp[1:]))
+                    for prop in matched_properties:
+                        properties['node'][tmp[0]][prop.split('=')[0]] = prop.split('=')[1]
+    else:
+        module.fail_json(msg='Failed to load properties from cluster. Is cluster running?')
 
-        elif state == 'absent':
-            result['changed'] = True
-            cmd_unset = ''
-            # property found but it should not be set
-            if node is None and name in properties['cluster']:
-                cmd_unset = 'pcs %(cib_file_param)s property unset %(name)s' % module.params
-            elif node is not None and node in properties['node'] and name in properties['node'][node]:
-                cmd_unset = 'pcs %(cib_file_param)s node attribute %(node)s %(name)s=' % module.params
+    result['detected_properties'] = properties
+
+    if state == 'present':
+        cmd_set = ''
+        result['changed'] = True
+        # property not found or having a different value
+        if node is None and (name not in properties['cluster'] or properties['cluster'][name] != value):
+            cmd_set = 'pcs %(cib_file_param)s property set %(name)s=%(value)s' % module.params
+        elif node is not None and (node not in properties['node'] or name not in properties['node'][node] or properties['node'][node][name] != value):
+            cmd_set = 'pcs %(cib_file_param)s node attribute %(node)s %(name)s=%(value)s' % module.params
+        else:
+            result['changed'] = False
+        if not module.check_mode and result['changed']:
+            rc, out, err = module.run_command(cmd_set)
+            if rc == 0:
+                module.exit_json(**result)
             else:
-                result['changed'] = False
-            if not module.check_mode and result['changed']:
-                rc, out, err = module.run_command(cmd_unset)
-                if rc == 0:
-                    module.exit_json(**result)
-                else:
-                    module.fail_json(msg="Failed to unset property with cmd: '" + cmd_unset + "'", output=out, error=err)
+                module.fail_json(msg="Failed to set property with cmd : '" + cmd_set + "'", output=out, error=err)
 
-        # END of module
-        module.exit_json(**result)
+    elif state == 'absent':
+        result['changed'] = True
+        cmd_unset = ''
+        # property found but it should not be set
+        if node is None and name in properties['cluster']:
+            cmd_unset = 'pcs %(cib_file_param)s property unset %(name)s' % module.params
+        elif node is not None and node in properties['node'] and name in properties['node'][node]:
+            cmd_unset = 'pcs %(cib_file_param)s node attribute %(node)s %(name)s=' % module.params
+        else:
+            result['changed'] = False
+        if not module.check_mode and result['changed']:
+            rc, out, err = module.run_command(cmd_unset)
+            if rc == 0:
+                module.exit_json(**result)
+            else:
+                module.fail_json(msg="Failed to unset property with cmd: '" + cmd_unset + "'", output=out, error=err)
+
+    # END of module
+    module.exit_json(**result)
 
 
 def main():

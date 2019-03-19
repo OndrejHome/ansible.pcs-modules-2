@@ -81,92 +81,92 @@ from ansible.module_utils.basic import AnsibleModule
 
 
 def run_module():
-        module = AnsibleModule(
-            argument_spec=dict(
-                state=dict(default="present", choices=['present', 'absent']),
-                defaults_type=dict(required=False, default="meta", choices=['meta', 'op']),
-                name=dict(required=True),
-                value=dict(required=False),
-                cib_file=dict(required=False),
-            ),
-            supports_check_mode=True
-        )
+    module = AnsibleModule(
+        argument_spec=dict(
+            state=dict(default="present", choices=['present', 'absent']),
+            defaults_type=dict(required=False, default="meta", choices=['meta', 'op']),
+            name=dict(required=True),
+            value=dict(required=False),
+            cib_file=dict(required=False),
+        ),
+        supports_check_mode=True
+    )
 
-        state = module.params['state']
-        name = module.params['name']
-        defaults_type = module.params['defaults_type']
-        value = module.params['value']
-        cib_file = module.params['cib_file']
+    state = module.params['state']
+    name = module.params['name']
+    defaults_type = module.params['defaults_type']
+    value = module.params['value']
+    cib_file = module.params['cib_file']
 
-        result = {}
+    result = {}
 
-        if find_executable('pcs') is None:
-            module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
+    if find_executable('pcs') is None:
+        module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
-        if state == 'present' and value is None:
-            module.fail_json(msg="To set a defaults 'value' must be specified.")
+    if state == 'present' and value is None:
+        module.fail_json(msg="To set a defaults 'value' must be specified.")
 
-        module.params['cib_file_param'] = ''
-        if cib_file is not None and os.path.isfile(cib_file):
-            module.params['cib_file_param'] = '-f ' + cib_file
+    module.params['cib_file_param'] = ''
+    if cib_file is not None and os.path.isfile(cib_file):
+        module.params['cib_file_param'] = '-f ' + cib_file
 
-        # get defaults list from running cluster
-        if defaults_type == 'meta':
-            rc, out, err = module.run_command('pcs %(cib_file_param)s resource defaults' % module.params)
-        elif defaults_type == 'op':
-            rc, out, err = module.run_command('pcs %(cib_file_param)s resource op defaults' % module.params)
-        else:
-            module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
+    # get defaults list from running cluster
+    if defaults_type == 'meta':
+        rc, out, err = module.run_command('pcs %(cib_file_param)s resource defaults' % module.params)
+    elif defaults_type == 'op':
+        rc, out, err = module.run_command('pcs %(cib_file_param)s resource op defaults' % module.params)
+    else:
+        module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
 
-        defaults = {}
-        if rc == 0:
-            for row in out.split('\n')[:-1]:
-                if row == 'No defaults set':
-                    break
-                tmp = row.split(':')
-                defaults[tmp[0]] = tmp[1].lstrip()
-        else:
-            module.fail_json(msg='Failed to load resource defaults from cluster. Is cluster running?')
+    defaults = {}
+    if rc == 0:
+        for row in out.split('\n')[:-1]:
+            if row == 'No defaults set':
+                break
+            tmp = row.split(':')
+            defaults[tmp[0]] = tmp[1].lstrip()
+    else:
+        module.fail_json(msg='Failed to load resource defaults from cluster. Is cluster running?')
 
-        result['detected_defaults'] = defaults
+    result['detected_defaults'] = defaults
 
-        if state == 'present' and (name not in defaults or defaults[name] != value):
-            # default not found or having a different value
-            result['changed'] = True
-            if not module.check_mode:
-                if defaults_type == 'meta':
-                    cmd_set = 'pcs %(cib_file_param)s resource defaults %(name)s=%(value)s' % module.params
-                elif defaults_type == 'op':
-                    cmd_set = 'pcs %(cib_file_param)s resource op defaults %(name)s=%(value)s' % module.params
-                else:
-                    module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
-                rc, out, err = module.run_command(cmd_set)
-                if rc == 0:
-                    module.exit_json(**result)
-                else:
-                    module.fail_json(msg="Failed to set " + defaults_type + " with cmd : '" + cmd_set + "'", output=out, error=err)
+    if state == 'present' and (name not in defaults or defaults[name] != value):
+        # default not found or having a different value
+        result['changed'] = True
+        if not module.check_mode:
+            if defaults_type == 'meta':
+                cmd_set = 'pcs %(cib_file_param)s resource defaults %(name)s=%(value)s' % module.params
+            elif defaults_type == 'op':
+                cmd_set = 'pcs %(cib_file_param)s resource op defaults %(name)s=%(value)s' % module.params
+            else:
+                module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
+            rc, out, err = module.run_command(cmd_set)
+            if rc == 0:
+                module.exit_json(**result)
+            else:
+                module.fail_json(msg="Failed to set " + defaults_type + " with cmd : '" + cmd_set + "'", output=out, error=err)
 
-        elif state == 'absent' and name in defaults:
-            # default found but it should not be set
-            result['changed'] = True
-            if not module.check_mode:
-                if defaults_type == 'meta':
-                    cmd_unset = 'pcs %(cib_file_param)s resource defaults %(name)s=' % module.params
-                elif defaults_type == 'op':
-                    cmd_unset = 'pcs %(cib_file_param)s resource op defaults %(name)s=' % module.params
-                else:
-                    module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
-                rc, out, err = module.run_command(cmd_unset)
-                if rc == 0:
-                    module.exit_json(**result)
-                else:
-                    module.fail_json(msg="Failed to unset " + defaults_type + " default with cmd: '" + cmd_unset + "'", output=out, error=err)
-        else:
-            # No change needed
-            result['changed'] = False
+    elif state == 'absent' and name in defaults:
+        # default found but it should not be set
+        result['changed'] = True
+        if not module.check_mode:
+            if defaults_type == 'meta':
+                cmd_unset = 'pcs %(cib_file_param)s resource defaults %(name)s=' % module.params
+            elif defaults_type == 'op':
+                cmd_unset = 'pcs %(cib_file_param)s resource op defaults %(name)s=' % module.params
+            else:
+                module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
+            rc, out, err = module.run_command(cmd_unset)
+            if rc == 0:
+                module.exit_json(**result)
+            else:
+                module.fail_json(msg="Failed to unset " + defaults_type + " default with cmd: '" + cmd_unset + "'", output=out, error=err)
+    else:
+        # No change needed
+        result['changed'] = False
 
-        # END of module
-        module.exit_json(**result)
+    # END of module
+    module.exit_json(**result)
 
 
 def main():

@@ -46,7 +46,7 @@ options:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
     required: false
 notes:
-   - Tested on CentOS 7.3, Fedora 28, 29
+   - Tested on CentOS 7.6, Fedora 28, 29
    - Tested on Red Hat Enterprise Linux 7.6
    - node property values with spaces are not idempotent
 '''

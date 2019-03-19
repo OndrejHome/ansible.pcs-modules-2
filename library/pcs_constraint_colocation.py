@@ -59,7 +59,7 @@ options:
       - "This module requires the file to already contain cluster configuration."
     required: false
 notes:
-   - tested on CentOS 7.3
+   - tested on CentOS 7.6, Fedora 29
    - no extra options allowed for constraints
    - "TODO: validation of resource names, score values"
 '''
@@ -75,6 +75,13 @@ EXAMPLES = '''
     resource1: 'resA'
     resource2: 'resB-master'
     resource2_role: 'Master'
+
+- name: remove colocation constraint that prefer resA to run on same node as Master resource of resB-master resource
+  pcs_constraint_colocation:
+    resource1: 'resA'
+    resource2: 'resB-master'
+    resource2_role: 'Master'
+    state: 'absent'
 '''
 
 import os.path

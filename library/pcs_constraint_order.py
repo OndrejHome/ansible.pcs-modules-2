@@ -66,7 +66,7 @@ options:
       - "This module requires the file to already contain cluster configuration."
     required: false
 notes:
-   - tested on CentOS 7.3
+   - tested on CentOS 7.6, Fedora 29
 '''
 
 EXAMPLES = '''

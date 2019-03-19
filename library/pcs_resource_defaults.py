@@ -48,7 +48,7 @@ options:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
     required: false
 notes:
-   - tested on CentOS 7.4
+   - tested on CentOS 7.6, Fedora 29
 '''
 
 EXAMPLES = '''

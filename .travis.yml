@@ -33,6 +33,8 @@ script:
   - python -m py_compile library/pcs_property.py
   - python -m py_compile library/pcs_resource.py
   - python -m py_compile library/pcs_resource_defaults.py
+  - python -m py_compile library/pcs_wait_for.py
+
 
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/

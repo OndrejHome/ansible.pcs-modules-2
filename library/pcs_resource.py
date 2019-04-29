@@ -65,6 +65,12 @@ options:
       - "define custom name of child resource when creating multistate resource ('master' or 'promotable' resource_class)."
       - "If not specified then the child resource name will have for of name+'-child'."
     required: false
+  ignored_meta_attributes:
+    description:
+      - "list of meta attributes that will be ignored when comparing existing resources"
+    required: false
+    default: []
+    type: list
 notes:
    - tested on CentOS 6.8, 7.3
    - module can create and delete clones, groups and master resources indirectly -
@@ -118,6 +124,12 @@ EXAMPLES = '''
     options: >
       fake=some_value promotable meta promotable-max=1 promotable-node-max=1 clone-max=2 clone-node-max=1 notify=true
       op monitor interval=60s meta resource-stickiness=100
+
+- name: ensure Dummy('ocf:pacemaker:Dummy') resource with name 'test' is present, but ignore if it is enabled or disabled (ignore target-role)
+  pcs_resource:
+    name: 'test'
+    resource_type: 'ocf:pacemaker:Dummy'
+    ignored_meta_attributes: [ 'target-role' ]
 '''
 
 # TODO if group exists and is not part of group, then specifying group won't put it into group
@@ -222,6 +234,22 @@ def rename_multistate_element(multistate_resource, resource_name, child_name, re
                 nvpair.set('id', new_nvpair_id)
 
 
+def remove_ignored_meta_attributes(resource, ignored_meta_attributes):
+    for elem in list(resource):
+        if elem.tag == 'meta_attributes' and len(list(elem)) > 0:
+            for nvpair in list(elem):
+                if nvpair.tag == 'nvpair' and nvpair.attrib.get('name') in ignored_meta_attributes:
+                    elem.remove(nvpair)
+
+
+def remove_empty_meta_attributes_tag(resource):
+    # remove the meta_attribute element to make comparison clean - Issue #10
+    # some versions of 'pcs' left empty 'meta_attributes' tag after 'pcs resource enable'
+    for elem in list(resource):
+        if elem.tag == 'meta_attributes' and len(list(elem)) == 0:
+            resource.remove(elem)
+
+
 def run_module():
     module = AnsibleModule(
         argument_spec=dict(
@@ -233,6 +261,7 @@ def run_module():
             force_resource_update=dict(default=False, type='bool', required=False),
             cib_file=dict(required=False),
             child_name=dict(required=False),
+            ignored_meta_attributes=dict(required=False, type='list', elements='str', default=[]),
         ),
         supports_check_mode=True
     )
@@ -245,6 +274,7 @@ def run_module():
         module.params['child_name'] = resource_name + '-child'
     child_name = module.params['child_name']
     resource_options = module.params['options']
+    ignored_meta_attributes = module.params['ignored_meta_attributes']
 
     if state == 'present' and (not module.params['resource_type']):
         module.fail_json(msg='When creating cluster resource you must specify the resource_type')
@@ -386,10 +416,14 @@ def run_module():
             clean_resource = find_resource(cib_clean_resources, resource_name)
 
             if clean_resource is not None:
-                # remove the meta_attribute element from original cluster cib when empty to make comparison clean - Issue #10
-                for elem in list(resource):
-                    if elem.tag == 'meta_attributes' and len(list(elem)) == 0:
-                        resource.remove(elem)
+                # cleanup the definition of resource and clean_resource before comparison
+                remove_ignored_meta_attributes(resource, ignored_meta_attributes)
+                remove_empty_meta_attributes_tag(resource)
+
+                remove_ignored_meta_attributes(clean_resource, ignored_meta_attributes)
+                remove_empty_meta_attributes_tag(clean_resource)
+
+                # compare the existing resource in cluster and simulated clean_resource
                 rc, diff = compare_resources(module, resource, clean_resource)
                 if rc == 0:
                     # if no differnces were find there is no need to update the resource

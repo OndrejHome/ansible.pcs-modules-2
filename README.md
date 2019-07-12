@@ -3,7 +3,7 @@ pcs-modules-2
 
 Ansible modules for configuring pacemaker cluster on CentOS/RHEL 6/7 and Fedora 29 systems.
 
-If you are looking for a role that will configure a basic pacemaker cluster on CentOS/RHEL 6/7 or Fedora 29 systems, then check out the [OndrejHome.ha-cluster-pacemaker](https://github.com/OndrejHome/ansible.ha-cluster-pacemaker) role that uses the pcs-modules-2.
+If you are looking for a role that will configure a basic pacemaker cluster on CentOS/RHEL 6/7 or Fedora 29 systems, then check out the [ondrejhome.ha-cluster-pacemaker](https://github.com/OndrejHome/ansible.ha-cluster-pacemaker) role that uses the pcs-modules-2.
 
 Note that modules manipulating with cluster configuration such as `pcs_resource`, `pcs_constraint_*`, `pcs_property` and `pcs_resource_defaults` should be run only from one of the cluster nodes in cluster by using either `run_once: True` or `delegate_to:` options.
 
@@ -45,7 +45,7 @@ Example playbook for including modules in your playbook
 
     - hosts: servers
       roles:
-         - { role: OndrejHome.pcs-modules-2 }
+         - { role: ondrejhome.pcs-modules-2 }
 
 Use the `ansible-doc` command to get more information about each module and to see examples of its use.
 

@@ -51,7 +51,7 @@ options:
     choices: ['default', 'udp', 'udpu', 'knet']
   transport_options:
     description:
-      - additional options for transports
+      - additional options for transports (must not be used with pcs 0.9)
     require: false
   allowed_node_changes:
     description:
@@ -197,15 +197,18 @@ def run_module():
     # if there is no cluster configuration and cluster should be created do 'pcs cluster setup'
     if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
         result['changed'] = True
-        # if no transport_options are specified used empty string
-        if (not module.params['transport_options']):
-            module.params['transport_options'] = ''
-        # create cluster from node list that was provided to module
+        # create cluster from node list that was provided to module        # create cluster from node list that was provided to module
         if pcs_version == '0.9':
+            # if no transport_options are specified used empty string
+            if (module.params['transport_options']):
+                module.fail_json(msg="using transport_options is not supported with pcs 0.9")
             module.params['token_param'] = '' if (not module.params['token']) else '--token %(token)s' % module.params
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else '--transport %(transport)s' % module.params
-            cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s %(transport_options)s' % module.params
+            cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
         elif pcs_version == '0.10':
+            # if no transport_options are specified used empty string
+            if (not module.params['transport_options']):
+                module.params['transport_options'] = ''
             module.params['token_param'] = '' if (not module.params['token']) else 'token %(token)s' % module.params
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else 'transport %(transport)s' % module.params
             cmd = 'pcs cluster setup %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s %(transport_options)s' % module.params

@@ -28,6 +28,7 @@ options:
     required: false
     default: present
     choices: ['present', 'absent']
+    type: str
   defaults_type:
     description:
       - "'meta' - resource meta defaults, 'pcs resource defaults ...'"
@@ -35,18 +36,22 @@ options:
     required: false
     default: meta
     choices: ['meta', 'op']
+    type: str
   name:
     description:
       - name of cluster resource default
     required: true
+    type: str
   value:
     description:
       - value of cluster resource default
     required: false
+    type: str
   cib_file:
     description:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
     required: false
+    type: str
 notes:
    - tested on CentOS 7.6, Fedora 29
 '''

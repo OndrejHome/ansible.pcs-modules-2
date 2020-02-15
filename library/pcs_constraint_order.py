@@ -28,43 +28,51 @@ options:
     required: false
     default: present
     choices: ['present', 'absent']
+    type: str
   resource1:
     description:
       - first resource for constraint
     required: true
+    type: str
   resource2:
     description:
       - second resource for constraint
     required: true
+    type: str
   resource1_action:
     description:
       - action to which constraint applies for resource1
     required: false
     choices: ['start','promote','demote','stop']
     default: 'start'
+    type: str
   resource2_action:
     description:
       - action to which constraint applies for resource2
     required: false
     choices: ['start','promote','demote','stop']
     default: 'start'
+    type: str
   kind:
     description:
       - Kind of the order constraint
     required: false
     choices: ['Optional','Mandatory','Serialize']
     default: 'Mandatory'
+    type: str
   symmetrical:
     description:
       - Is the constraint symmetrical?
     required: false
     choices: ['true','false']
     default: 'true'
+    type: str
   cib_file:
     description:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
       - "This module requires the file to already contain cluster configuration."
     required: false
+    type: str
 notes:
    - tested on CentOS 7.6, Fedora 29
 '''

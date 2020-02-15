@@ -29,24 +29,29 @@ options:
     required: false
     default: present
     choices: ['present', 'absent']
+    type: str
   name:
     description:
       - "name of cluster resource - cluster resource identifier"
     required: true
+    type: str
   resource_class:
     description:
       - class of cluster resource
-    required: true
+    required: false
     default: 'ocf'
     choices: ['ocf', 'systemd', 'stonith', 'master', 'promotable']
+    type: str
   resource_type:
     description:
       - cluster resource type
     required: false
+    type: str
   options:
     description:
       - "additional options passed to 'pcs' command"
     required: false
+    type: str
   force_resource_update:
     description:
       - "skip checking for cluster changes when updating existing resource configuration
@@ -60,17 +65,20 @@ options:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
       - "This module requires the file to already contain cluster configuration."
     required: false
+    type: str
   child_name:
     description:
       - "define custom name of child resource when creating multistate resource ('master' or 'promotable' resource_class)."
       - "If not specified then the child resource name will have for of name+'-child'."
     required: false
+    type: str
   ignored_meta_attributes:
     description:
       - "list of meta attributes that will be ignored when comparing existing resources"
     required: false
     default: []
     type: list
+    elements: str
 notes:
    - tested on CentOS 6.8, 7.3
    - module can create and delete clones, groups and master resources indirectly -

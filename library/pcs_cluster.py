@@ -28,18 +28,22 @@ options:
     required: false
     default: present
     choices: ['present', 'absent']
+    type: str
   node_list:
     description:
       - space separated list of nodes in cluster
     required: false
+    type: str
   cluster_name:
     description:
       - pacemaker cluster name
-    required: true
+    required: false
+    type: str
   token:
     description:
       - sets time in milliseconds until a token loss is declared after not receiving a token
     required: false
+    type: int
   transport:
     description:
       - "'default' - use default transport protocol ('udp' in CentOS/RHEL 6, 'udpu' in CentOS/RHEL 7), 'knet' in Fedora 29"
@@ -49,6 +53,7 @@ options:
     required: false
     default: default
     choices: ['default', 'udp', 'udpu', 'knet']
+    type: str
   allowed_node_changes:
     description:
       - "'none' - node list must match existing cluster if cluster should be present"
@@ -57,6 +62,7 @@ options:
     default: none
     required: false
     choices: ['none', 'add', 'remove']
+    type: str
 notes:
    - Tested on CentOS 6.8, 6.9, 7.3, 7.4, 7.5
    - Tested on Red Hat Enterprise Linux 7.3, 7.4, 7.6

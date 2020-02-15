@@ -28,36 +28,43 @@ options:
     required: false
     default: present
     choices: ['present', 'absent']
+    type: str
   resource1:
     description:
       - first resource for constraint
     required: true
+    type: str
   resource2:
     description:
       - second resource for constraint
     required: true
+    type: str
   resource1_role:
     description:
       - Role of resource1
     required: false
     choices: ['Master', 'Slave', 'Started']
     default: 'Started'
+    type: str
   resource2_role:
     description:
       - Role of resource2
     required: false
     choices: ['Master', 'Slave', 'Started']
     default: 'Started'
+    type: str
   score:
     description:
       - constraint score in range -INFINITY..0..INFINITY
     required: false
     default: 'INFINITY'
+    type: str
   cib_file:
     description:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
       - "This module requires the file to already contain cluster configuration."
     required: false
+    type: str
 notes:
    - tested on CentOS 7.6, Fedora 29
    - no extra options allowed for constraints

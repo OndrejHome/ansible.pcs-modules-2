@@ -372,11 +372,15 @@ def run_module():
                                 cmd = 'pcs %(cib_file_param)s resource delete %(child_name)s' % module.params
                                 rc2, out2, err2 = module.run_command(cmd)
                                 if rc2 == 0:
-                                    module.fail_json(msg="Failed to push updated configuration for multistate resource to cluster using command '" + push_cmd + "'. Creation of multistate resource was rolled back. You can retry this task with 'force_resource_update=true' to see if that helps.", output=out, error=err)
+                                    module.fail_json(msg="Failed to push updated configuration for multistate resource to cluster using command '" + push_cmd +
+                                                     "'. Creation of multistate resource was rolled back. You can retry this task with " +
+                                                     "'force_resource_update=true' to see if that helps.", output=out, error=err)
                                 else:
-                                    module.fail_json(msg="Failed to delete resource after unsuccessful multistate resource configuration update using command '" + cmd + "'", output=out2, error=err2)
+                                    module.fail_json(msg="Failed to delete resource after unsuccessful multistate resource configuration update using command '"
+                                                     + cmd + "'", output=out2, error=err2)
                         else:
-                            module.fail_json(msg="Failed to detect multistate resource after creating it with cmd '" + cmd + "'!", output=out, error=err, previous_cib=current_cib)
+                            module.fail_json(msg="Failed to detect multistate resource after creating it with cmd '" + cmd + "'!",
+                                             output=out, error=err, previous_cib=current_cib)
                 module.exit_json(changed=True)
             else:
                 module.fail_json(msg="Failed to create resource using command '" + cmd + "'", output=out, error=err)
@@ -414,7 +418,8 @@ def run_module():
                     except Exception as e:
                         module.fail_json(msg="Error encountered writing intermediate multistate result to clean_cib_path - %s" % (e))
                 else:
-                    module.fail_json(msg="Failed to detect intermediate multistate resource after creating it with cmd '" + cmd + "'!", output=out, error=err, previous_cib=current_cib)
+                    module.fail_json(msg="Failed to detect intermediate multistate resource after creating it with cmd '" + cmd + "'!",
+                                     output=out, error=err, previous_cib=current_cib)
 
             # we have a comparable resource created in clean cluster, so lets select it and compare it
             clean_cib = ET.parse(clean_cib_path)

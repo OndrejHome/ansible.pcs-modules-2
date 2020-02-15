@@ -192,7 +192,10 @@ def run_module():
         result.update({'constraint_was_matched': False})
 
     # order constraint creation command
-    cmd_create = 'pcs %(cib_file_param)s constraint order %(resource1_action)s %(resource1)s then %(resource2_action)s %(resource2)s kind=%(kind)s symmetrical=%(symmetrical)s' % module.params
+    cmd_create = """ pcs %(cib_file_param)s constraint
+                     order %(resource1_action)s %(resource1)s
+                     then %(resource2_action)s %(resource2)s
+                     kind=%(kind)s symmetrical=%(symmetrical)s """ % module.params
 
     # order constraint deletion command
     if constraint is not None:
@@ -218,13 +221,15 @@ def run_module():
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd_delete)
                 if rc != 0:
-                    module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd_delete + "'", output=out, error=err)
+                    module.fail_json(msg="Failed to delete constraint for replacement with cmd: '" + cmd_delete + "'",
+                                     output=out, error=err)
                 else:
                     rc, out, err = module.run_command(cmd_create)
                     if rc == 0:
                         module.exit_json(**result)
                     else:
-                        module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'", output=out, error=err, cmd_del=cmd_delete)
+                        module.fail_json(msg="Failed to create constraint replacement with cmd: '" + cmd_create + "'",
+                                         output=out, error=err, cmd_del=cmd_delete)
 
     elif state == 'absent' and constraint is not None:
         # constraint should not be present but we have found something - lets remove that

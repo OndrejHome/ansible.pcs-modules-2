@@ -141,7 +141,7 @@ def run_module():
     elif (state == 'absent' and tokens_data and (
             (pcs_version == '0.9' and node_name in tokens_data['tokens']) or
             (pcs_version == '0.10' and node_name in tokens_data['known_hosts'])
-            )):
+    )):
         result['changed'] = True
         if not module.check_mode:
             if pcs_version == '0.9':

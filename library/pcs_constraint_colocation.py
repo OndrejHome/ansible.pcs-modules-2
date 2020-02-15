@@ -179,13 +179,20 @@ def run_module():
     # TODO: check which old versions requires this, the 0.9.162 seems to handle 'Started' role correctly
     if with_roles is True:
         if resource1_role != 'Started' and resource2_role != 'Started':
-            cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
+            cmd_create = """ pcs %(cib_file_param)s constraint colocation
+                             add %(resource1_role)s %(resource1)s
+                             with %(resource2_role)s %(resource2)s %(score)s """ % module.params
         elif resource1_role != 'Started' and resource2_role == 'Started':
-            cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1_role)s %(resource1)s with %(resource2)s %(score)s' % module.params
+            cmd_create = """ pcs %(cib_file_param)s constraint colocation
+                             add %(resource1_role)s %(resource1)s
+                             with %(resource2)s %(score)s """ % module.params
         elif resource1_role == 'Started' and resource2_role != 'Started':
-            cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2_role)s %(resource2)s %(score)s' % module.params
+            cmd_create = """ pcs %(cib_file_param)s constraint colocation
+                             add %(resource1)s
+                             with %(resource2_role)s %(resource2)s %(score)s """ % module.params
     else:
-        cmd_create = 'pcs %(cib_file_param)s constraint colocation add %(resource1)s with %(resource2)s %(score)s' % module.params
+        cmd_create = """ pcs %(cib_file_param)s constraint colocation
+                         add %(resource1)s with %(resource2)s %(score)s """ % module.params
 
     # colocation constraint deletion command
     if constraint is not None:

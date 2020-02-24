@@ -47,6 +47,11 @@ options:
     description:
       - "additional options passed to 'pcs' command"
     required: false
+  wait:
+    description:
+      - "use '--wait' when creating the resource"
+    default: no
+    type: bool    
   force_resource_update:
     description:
       - "skip checking for cluster changes when updating existing resource configuration
@@ -258,6 +263,7 @@ def run_module():
             resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith', 'master', 'promotable']),
             resource_type=dict(required=False),
             options=dict(default="", required=False),
+            wait=dict(default=False, type='bool', required=False),
             force_resource_update=dict(default=False, type='bool', required=False),
             cib_file=dict(required=False),
             child_name=dict(required=False),
@@ -275,6 +281,12 @@ def run_module():
     child_name = module.params['child_name']
     resource_options = module.params['options']
     ignored_meta_attributes = module.params['ignored_meta_attributes']
+
+    # check if --wait shall be used when creating a resource
+    if module.params['wait']:
+        module.params['token_wait'] = '--wait'
+    else:
+        module.params['token_wait'] = ''
 
     if state == 'present' and (not module.params['resource_type']):
         module.fail_json(msg='When creating cluster resource you must specify the resource_type')
@@ -332,7 +344,7 @@ def run_module():
                 cmd = 'pcs %(cib_file_param)s resource create %(child_name)s %(resource_type)s %(options)s' % module.params
             else:
                 cmd = 'pcs %(cib_file_param)s resource create %(name)s %(resource_type)s %(options)s' % module.params
-            rc, out, err = module.run_command(cmd)
+            rc, out, err = module.run_command(cmd + ' ' + module.params['token_wait'])
             if rc != 0 and "Call cib_replace failed (-62): Timer expired" in err:
                 # EL6: special retry when we failed to create resource because of timer waiting on cib expired
                 rc, out, err = module.run_command(cmd)

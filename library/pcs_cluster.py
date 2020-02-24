@@ -51,7 +51,7 @@ options:
     choices: ['default', 'udp', 'udpu', 'knet']
   transport_options:
     description:
-      - additional options for transports (must not be used with pcs 0.9)
+      - additional options for transports (available only with pcs-0.10), this option can be used only when `transport` option is specified (non-default)"
     require: false
   allowed_node_changes:
     description:
@@ -95,7 +95,7 @@ EXAMPLES = '''
     state: 'present'
   run_once: True
 
-- name: Create cluster with redundant corosync links and transport options
+- name: Create cluster with redundant corosync links and transport and link options
   pcs_cluster:
     cluster_name: 'test-cluster'
     node_list: >
@@ -141,7 +141,7 @@ def run_module():
             cluster_name=dict(required=False),
             token=dict(required=False, type='int'),
             transport=dict(required=False, default="default", choices=['default', 'udp', 'udpu', 'knet']),
-            transport_options=dict(required=False, type='str'),
+            transport_options=dict(required=False, default="", type='str'),
             allowed_node_changes=dict(required=False, default="none", choices=['none', 'add', 'remove']),
         ),
         supports_check_mode=True
@@ -197,7 +197,7 @@ def run_module():
     # if there is no cluster configuration and cluster should be created do 'pcs cluster setup'
     if state == 'present' and not (cluster_conf_exists or corosync_conf_exists or cib_xml_exists):
         result['changed'] = True
-        # create cluster from node list that was provided to module        # create cluster from node list that was provided to module
+        # create cluster from node list that was provided to module
         if pcs_version == '0.9':
             # if no transport_options are specified used empty string
             if (module.params['transport_options']):
@@ -206,9 +206,8 @@ def run_module():
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else '--transport %(transport)s' % module.params
             cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
         elif pcs_version == '0.10':
-            # if no transport_options are specified used empty string
-            if (not module.params['transport_options']):
-                module.params['transport_options'] = ''
+            if ((module.params['transport_options'] != '') and (module.params['transport'] == 'default')):
+                module.fail_json(msg="using option transport_option must not be used without option transport")
             module.params['token_param'] = '' if (not module.params['token']) else 'token %(token)s' % module.params
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else 'transport %(transport)s' % module.params
             cmd = 'pcs cluster setup %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s %(transport_options)s' % module.params

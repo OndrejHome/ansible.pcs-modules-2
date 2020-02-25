@@ -47,7 +47,7 @@ options:
     description:
       - "additional options passed to 'pcs' command"
     required: false
-  wait:
+  wait_on_create:
     description:
       - "use '--wait' when creating the resource"
     default: no
@@ -89,11 +89,11 @@ EXAMPLES = '''
     name: 'test'
     resource_type: 'ocf:pacemaker:Dummy'
 
-- name: ensure Dummy('ocf:pacemaker:Dummy') resource with name 'test' is present and wait for it to be started
+- name: ensure Dummy('ocf:pacemaker:Dummy') resource with name 'test' is present and wait for it to be up if created
   pcs_resource:
     name: 'test'
     resource_type: 'ocf:pacemaker:Dummy'
-    wait: true
+    wait_on_create: true
 
 - name: create 'stonith' class resource 'kdump' of type 'fence_kdump'
   pcs_resource:
@@ -269,7 +269,7 @@ def run_module():
             resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith', 'master', 'promotable']),
             resource_type=dict(required=False),
             options=dict(default="", required=False),
-            wait=dict(default=False, type='bool', required=False),
+            wait_on_create=dict(default=False, type='bool', required=False),
             force_resource_update=dict(default=False, type='bool', required=False),
             cib_file=dict(required=False),
             child_name=dict(required=False),
@@ -289,7 +289,7 @@ def run_module():
     ignored_meta_attributes = module.params['ignored_meta_attributes']
 
     # check if --wait shall be used when creating a resource
-    if module.params['wait']:
+    if module.params['wait_on_create']:
         module.params['token_wait'] = '--wait'
     else:
         module.params['token_wait'] = ''

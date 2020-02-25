@@ -89,6 +89,12 @@ EXAMPLES = '''
     name: 'test'
     resource_type: 'ocf:pacemaker:Dummy'
 
+- name: ensure Dummy('ocf:pacemaker:Dummy') resource with name 'test' is present and wait for it to be started
+  pcs_resource:
+    name: 'test'
+    resource_type: 'ocf:pacemaker:Dummy'
+    wait: true
+
 - name: create 'stonith' class resource 'kdump' of type 'fence_kdump'
   pcs_resource:
     name: 'kdump'

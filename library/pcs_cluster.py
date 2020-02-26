@@ -56,8 +56,9 @@ options:
     type: str
   transport_options:
     description:
-      - additional options for transports (available only with pcs-0.10), this option can be used only when `transport` option is specified (non-default)"
-    require: false
+      - "additional options for transports (available only with pcs-0.10), this option can be used only when `transport` option is specified (non-default)"
+    required: false
+    type: str
   allowed_node_changes:
     description:
       - "'none' - node list must match existing cluster if cluster should be present"

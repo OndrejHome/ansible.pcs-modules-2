@@ -51,6 +51,16 @@ Use the `ansible-doc` command to get more information about each module and to s
 
     ansible-doc -M library/ pcs_resource
 
+Known issues and limitations
+----------------------------
+
+- RRP on EL7 is limited to 2 links and following message can be observed if more than 2 links are attempted. `pcs_cluster` module will consider only 2 links and ignore rest of specified silently to avoid this issue. If you have platform with `pcs-0.9` where you can create cluster with 3 or more redundant links (using `pcs`) then feel free to open issue and provide details.
+
+    ~~~
+    [MAIN  ] parse error in config: interface ring number 2 is bigger than allowed maximum 1
+    ~~~
+
+
 License
 -------
 

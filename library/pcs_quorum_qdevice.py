@@ -166,7 +166,7 @@ def run_module():
         cmd = 'pcs quorum device add model net host=%(qdevice)s algorithm=%(algorithm)s' % module.params
         update = True
 
-    elif (config_qdevice_name_diff or config_qdevice_algo_diff) and  allowed_qdevice_changes != 'none' and state == 'present':
+    elif (config_qdevice_name_diff or config_qdevice_algo_diff) and allowed_qdevice_changes != 'none' and state == 'present':
         result['changed'] = True
         result['old_qdevice'] = qd_name
         result['new_qdevice'] = qdevice
@@ -196,7 +196,7 @@ def run_module():
             msg += "Detected qdevice' and 'Requested qdevice' are different, but changes are not allowed."
         if 'algorithm' in result:
             msg += "Detected algorithm' and 'Requested algorithm' are different, but changes are not allowed."
-        result ['msg'] = msg
+        result['msg'] = msg
         module.fail_json(**result)
 
     if not module.check_mode and update:
@@ -208,6 +208,7 @@ def run_module():
 
     # END of module
     module.exit_json(**result)
+
 
 def main():
     run_module()

@@ -13,7 +13,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-author: "Olivier Pouilly (@OndrejHome)"
+author: "Olivier Pouilly (@OliPou)"
 module: pcs_quorum
 short_description: "wrapper module for 'pcs quorum setup/destroy/change qdevice setting'"
 description:
@@ -128,14 +128,6 @@ def run_module():
 
     if state == 'present' and not corosync_conf_exists:
         module.fail_json(msg='When creating/updating qdevice you must have a cluster set')
-
-    # if qdevice is not None:
-    #     qdevice_set = qdevice
-    #     qdevice_set_detailed = "host: {} ".format(qdevice)
-
-    # if algorithm is not None:
-    #     algorithm_set = algorithm
-    #     algorithm_set_detailed = "algorithm: {} ".format(algorithm)
 
     try:
         corosync_conf = open('/etc/corosync/corosync.conf', 'r')

@@ -50,7 +50,7 @@ options:
     type: str
 notes:
    - Tested on Debian 10
-   - "When adding/removing qdevice, make sure to use 'run_once=True' on a cluster node
+   - "When adding/removing qdevice, make sure to use 'run_once=True' on a cluster node"
 '''
 
 EXAMPLES = '''

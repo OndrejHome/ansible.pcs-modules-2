@@ -54,29 +54,23 @@ notes:
 '''
 
 EXAMPLES = '''
-- name: Setup qdevice
+- name: Setup qdevice with default algorithm (ffsplit)
   pcs_quorum_qdevice:
     qdevice: qdevice-name
   run_once: True
 
-- name: Setup qdevice
+- name: Setup qdevice with lms algorithm
   pcs_quorum_qdevice:
     qdevice: qdevice-name
-    algorithm: ffsplit
+    algorithm: lms
   run_once: True
 
-- name: delete qdevice
+- name: Delete qdevice
   pcs_quorum_qdevice:
     state: absent
   run_once: True
 
-- name: Setup qdevice
-  pcs_quorum_qdevice:
-    qdevice: qdevice-name
-    algorithm: ffsplit
-  run_once: True
-
-- name: Setup qdevice
+- name: Setup or modify qdevice to use lms algorith
   pcs_quorum_qdevice:
     qdevice: qdevice-name
     algorithm: lms

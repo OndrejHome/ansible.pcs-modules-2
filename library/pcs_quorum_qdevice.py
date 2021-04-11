@@ -159,7 +159,7 @@ def run_module():
     update, mismatch_options = False, False
     msg = ''
 
-    if no_conf:
+    if no_conf and state == 'present':
         result['changed'] = True
         result['new_qdevice'] = qdevice
         result['new_algorithm'] = algorithm

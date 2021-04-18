@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = '''
 ---
 author: "Olivier Pouilly (@OliPou)"
-module: pcs_quorum
+module: pcs_quorum_qdevice
 short_description: "wrapper module for 'pcs quorum setup/destroy/change qdevice setting'"
 description:
   - "module for setup/destroy/change qdevice setting 'pcs' utility"
@@ -30,7 +30,7 @@ options:
     type: str
   qdevice:
     description:
-      - qdevice name
+      - qdevice name (hostname or IP address)
     required: false
     type: str
   algorithm:
@@ -42,8 +42,8 @@ options:
     type: str
   allowed_qdevice_changes:
     description:
-      - "'none' - node list must match existing cluster if cluster should be present"
-      - "'update' - allow qdevice update"
+      - "'none' - existing qdevice and algorithm must match"
+      - "'update' - allow qdevice and/or algorithm update"
     default: none
     required: false
     choices: ['none', 'update']
@@ -88,7 +88,7 @@ from ansible.module_utils.basic import AnsibleModule
 def run_module():
     module = AnsibleModule(
         argument_spec=dict(
-            state=dict(required=False,default="present", choices=['present', 'absent']),
+            state=dict(required=False, default="present", choices=['present', 'absent']),
             qdevice=dict(required=False, type='str'),
             algorithm=dict(required=False, default="ffsplit", choices=['ffsplit', 'lms']),
             allowed_qdevice_changes=dict(required=False, default="none", choices=['none', 'update']),
@@ -115,7 +115,7 @@ def run_module():
         module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
     if pcs_version != '0.10':
-       module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.10 are supported.")
+        module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only version 0.10 is supported.")
 
     # EL 7 configuration file
     corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf')
@@ -187,9 +187,9 @@ def run_module():
 
     if mismatch_options:
         if 'qdevice' in result:
-            msg += "Detected qdevice' and 'Requested qdevice' are different, but changes are not allowed."
+            msg += "'Detected qdevice' and 'Requested qdevice' are different, but changes are not allowed."
         if 'algorithm' in result:
-            msg += "Detected algorithm' and 'Requested algorithm' are different, but changes are not allowed."
+            msg += "'Detected algorithm' and 'Requested algorithm' are different, but changes are not allowed."
         result['msg'] = msg
         module.fail_json(**result)
 

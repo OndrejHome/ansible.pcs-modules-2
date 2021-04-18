@@ -36,6 +36,8 @@ Provided Modules
 
 *pcs_resource_defaults* - set/unset resource defaults and resource operation defaults
 
+*pcs_quorum_qdevice* - crete/delete qdevice in pacemaker cluster
+
 *pcs_stonith_level* - crete/delete stonith levels in pacemaker cluster
 
 *detect_pacemaker_cluster* - fact collecting module for collecting various information about pacemaker cluster (currently only the nodes cluster considers to be part of)

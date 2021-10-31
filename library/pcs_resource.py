@@ -54,11 +54,14 @@ options:
     type: str
   force_resource_update:
     description:
-      - "skip checking for cluster changes when updating existing resource configuration
-        -  use 'scope=resources' when pushing the change to cluster. Useful in busy clusters,
-        dangerous when there are concurent updates as they can be lost."
+      - "When set to 'yes' the pcs will use 'scope=resource' instead of 'scope=all' when creating resources"
+      - "For primitive resources the default is 'no' while for multistate resources ('master'/'promotable')
+      the default value is 'yes'."
+      - "This option is useful in busy clusters where a lot of changes may happen while module is running resulting
+      in error like 'Unable to push to the CIB because pushed configuration is older than existing one.' in
+      which case this is worth a try to see if that resolves the error.
+      However enabling this options may discard other resource config changes made to cluster while module is running."
     required: false
-    default: no
     type: bool
   cib_file:
     description:
@@ -266,7 +269,7 @@ def run_module():
             resource_class=dict(default="ocf", choices=['ocf', 'systemd', 'stonith', 'master', 'promotable']),
             resource_type=dict(required=False),
             options=dict(default="", required=False),
-            force_resource_update=dict(default=False, type='bool', required=False),
+            force_resource_update=dict(type='bool', required=False),
             cib_file=dict(required=False),
             child_name=dict(required=False),
             ignored_meta_attributes=dict(required=False, type='list', elements='str', default=[]),
@@ -283,6 +286,13 @@ def run_module():
     child_name = module.params['child_name']
     resource_options = module.params['options']
     ignored_meta_attributes = module.params['ignored_meta_attributes']
+    # Issue #39: Use scope=resources when dealing with master/promotable resource as default
+    # In many cases these resources needs this option as they quickly create node attributes causing error.
+    if module.params['force_resource_update'] is None and resource_class in ['master', 'promotable']:
+        module.params['force_resource_update'] = True
+    elif module.params['force_resource_update'] is None:
+        module.params['force_resource_update'] = False
+    # if value was specified we will not override it
 
     if state == 'present' and (not module.params['resource_type']):
         module.fail_json(msg='When creating cluster resource you must specify the resource_type')

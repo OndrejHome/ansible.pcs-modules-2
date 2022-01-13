@@ -234,7 +234,7 @@ def run_module():
         elif pcs_version == '0.10':
             if ((module.params['transport_options'] != '') and (module.params['transport'] == 'default')):
                 module.fail_json(msg="using option transport_option must not be used without option transport")
-            module.params['token_param'] = '' if (not module.params['token']) else 'token %(token)s' % module.params
+            module.params['token_param'] = '' if (not module.params['token']) else 'totem token=%(token)s' % module.params
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else 'transport %(transport)s' % module.params
             if ',' in module.params['node_list']:
                 # rewrite node_list to conform to pcs-0.10 format with multiple links

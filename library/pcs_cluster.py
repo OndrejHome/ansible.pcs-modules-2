@@ -146,7 +146,7 @@ def run_module():
             state=dict(default="present", choices=['present', 'absent']),
             node_list=dict(required=False),
             cluster_name=dict(required=False),
-            token=dict(required=False, type='int'),
+            token=dict(required=False, type='int', no_log=False),
             transport=dict(required=False, default="default", choices=['default', 'udp', 'udpu', 'knet']),
             transport_options=dict(required=False, default="", type='str'),
             allowed_node_changes=dict(required=False, default="none", choices=['none', 'add', 'remove']),

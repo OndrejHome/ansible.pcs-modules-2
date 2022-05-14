@@ -6,14 +6,19 @@ galaxy_info:
   license: GPLv3
   min_ansible_version: 2.4
   platforms:
-  - name: EL
-    versions:
-    - 6
-    - 7
-  - name: Fedora
-    versions:
-    - 29
+    - name: EL
+      versions:
+        - 6
+        - 7
+        - 8
+    - name: Fedora
+      versions:
+        - 31
+        - 32
+        - 33
+        - 34
+        - 35
   galaxy_tags:
-  - clustering
-  - pacemaker
+    - clustering
+    - pacemaker
 dependencies: []

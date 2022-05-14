@@ -231,7 +231,7 @@ def run_module():
             module.params['token_param'] = '' if (not module.params['token']) else '--token %(token)s' % module.params
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else '--transport %(transport)s' % module.params
             cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
-        elif pcs_version == '0.10':
+        elif pcs_version in ['0.10', '0.11']:
             if ((module.params['transport_options'] != '') and (module.params['transport'] == 'default')):
                 module.fail_json(msg="using option transport_option must not be used without option transport")
             module.params['token_param'] = '' if (not module.params['token']) else 'totem token=%(token)s' % module.params
@@ -245,7 +245,7 @@ def run_module():
                         module.params['node_list'] += 'addr=' + node_list_set_detailed[node]['ring' + str(link_number)] + ' '
             cmd = 'pcs cluster setup %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s %(transport_options)s' % module.params
         else:
-            module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9 and 0.10 are supported.")
+            module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10 and 0.11 are supported.")
         if not module.check_mode:
             rc, out, err = module.run_command(cmd)
             if rc == 0:
@@ -262,7 +262,7 @@ def run_module():
             for node in (node_list_set - detected_node_list_set):
                 if 'ring1' in node_list_set_detailed[node] and pcs_version == '0.9':
                     cmd = 'pcs cluster node add ' + node + ',' + node_list_set_detailed[node]['ring1']
-                elif len(node_list_set_detailed[node]) > 1 and pcs_version == '0.10':
+                elif len(node_list_set_detailed[node]) > 1 and pcs_version in ['0.10', '0.11']:
                     cmd = 'pcs cluster node add ' + node + ' '
                     for link_number in range(len(node_list_set_detailed[node])):
                         cmd += 'addr=' + node_list_set_detailed[node]['ring' + str(link_number)] + ' '

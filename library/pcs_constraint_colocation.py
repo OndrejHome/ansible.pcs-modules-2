@@ -59,6 +59,12 @@ options:
     required: false
     default: 'INFINITY'
     type: str
+  influence:
+    description:
+      - constraint influence (since pcs version 0.11)
+    required: false
+    default: true
+    type: bool
   cib_file:
     description:
       - "Apply changes to specified file containing cluster CIB instead of running cluster."
@@ -89,6 +95,12 @@ EXAMPLES = '''
     resource2: 'resB-master'
     resource2_role: 'Master'
     state: 'absent'
+
+- name: prefer resA and resB to run on same node but do not move resA if resB fails
+  pcs_constraint_colocation:
+    resource1: 'resA'
+    resource2: 'resB'
+    influenece: false
 '''
 
 import os.path
@@ -107,6 +119,7 @@ def run_module():
             resource1_role=dict(required=False, choices=['Master', 'Slave', 'Started'], default='Started'),
             resource2_role=dict(required=False, choices=['Master', 'Slave', 'Started'], default='Started'),
             score=dict(required=False, default="INFINITY"),
+            influence=dict(required=False, type='bool', default=True),
             cib_file=dict(required=False),
         ),
         supports_check_mode=True
@@ -124,6 +137,23 @@ def run_module():
 
     if find_executable('pcs') is None:
         module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
+
+    # get the pcs major.minor version
+    rc, out, err = module.run_command('pcs --version')
+    if rc == 0:
+        pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
+    else:
+        module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
+
+    # influence support was introduced in 0.11
+    if pcs_version == '0.11':
+        influence = module.params['influence'] = 'influence=true' if module.params['influence'] else 'influence=false'
+    elif not module.params['influence']:
+        # influence=False (not supported for pcs<0.11)
+        module.fail_json(msg="constraint colocation influence needs pcs version 0.11")
+    else:
+        # influence=True (default for pcs<0.11, but syntax not supported yet)
+        influence = module.params['influence'] = ''
 
     module.params['cib_file_param'] = ''
     if cib_file is not None:
@@ -181,18 +211,18 @@ def run_module():
         if resource1_role != 'Started' and resource2_role != 'Started':
             cmd_create = """ pcs %(cib_file_param)s constraint colocation
                              add %(resource1_role)s %(resource1)s
-                             with %(resource2_role)s %(resource2)s %(score)s """ % module.params
+                             with %(resource2_role)s %(resource2)s %(score)s %(influence)s """ % module.params
         elif resource1_role != 'Started' and resource2_role == 'Started':
             cmd_create = """ pcs %(cib_file_param)s constraint colocation
                              add %(resource1_role)s %(resource1)s
-                             with %(resource2)s %(score)s """ % module.params
+                             with %(resource2)s %(score)s %(influence)s """ % module.params
         elif resource1_role == 'Started' and resource2_role != 'Started':
             cmd_create = """ pcs %(cib_file_param)s constraint colocation
                              add %(resource1)s
-                             with %(resource2_role)s %(resource2)s %(score)s """ % module.params
+                             with %(resource2_role)s %(resource2)s %(score)s %(influence)s """ % module.params
     else:
         cmd_create = """ pcs %(cib_file_param)s constraint colocation
-                         add %(resource1)s with %(resource2)s %(score)s """ % module.params
+                         add %(resource1)s with %(resource2)s %(score)s %(influence)s """ % module.params
 
     # colocation constraint deletion command
     if constraint is not None:
@@ -210,7 +240,7 @@ def run_module():
 
     elif state == 'present' and constraint is not None:
         # constraint should be present, lets see if it has different score from requested, if yes, then we do update
-        if constraint.attrib.get('score', 'INFINITY') != score:
+        if constraint.attrib.get('score', 'INFINITY') != score or (pcs_version == '0.11' and 'influence=' + constraint.attrib.get('influence', 'true') != influence):
             result['changed'] = True
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd_delete)

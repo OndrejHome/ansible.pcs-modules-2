@@ -43,14 +43,14 @@ options:
     description:
       - Role of resource1
     required: false
-    choices: ['Master', 'Slave', 'Started']
+    choices: ['Master', 'Slave', 'Promoted', 'Unpromoted', 'Started']
     default: 'Started'
     type: str
   resource2_role:
     description:
       - Role of resource2
     required: false
-    choices: ['Master', 'Slave', 'Started']
+    choices: ['Master', 'Slave', 'Promoted', 'Unpromoted', 'Started']
     default: 'Started'
     type: str
   score:
@@ -116,8 +116,8 @@ def run_module():
             state=dict(default="present", choices=['present', 'absent']),
             resource1=dict(required=True),
             resource2=dict(required=True),
-            resource1_role=dict(required=False, choices=['Master', 'Slave', 'Started'], default='Started'),
-            resource2_role=dict(required=False, choices=['Master', 'Slave', 'Started'], default='Started'),
+            resource1_role=dict(required=False, choices=['Master', 'Slave', 'Promoted', 'Unpromoted', 'Started'], default='Started'),
+            resource2_role=dict(required=False, choices=['Master', 'Slave', 'Promoted', 'Unpromoted', 'Started'], default='Started'),
             score=dict(required=False, default="INFINITY"),
             influence=dict(required=False, type='bool', default=True),
             cib_file=dict(required=False),

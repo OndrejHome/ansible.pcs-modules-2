@@ -84,27 +84,170 @@ EXAMPLES = '''
 '''
 
 import os.path
+import re
 import xml.etree.ElementTree as ET
 from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
+class DateSpec:
+    hours: str | int = None
+    monthdays: str | int = None
+    weekdays: str | int = None
+    yeardays: str | int = None
+    months: str | int = None
+    weeks: str | int = None
+    years: str | int = None
+    weekyears: str = None
+    moon: str | int = None
+
+    def __init__(self, expression: str):
+        for match_group in re.findall(
+            r"(hours|monthdays|weekdays|yeardays|months|weeks|years|weekyears|moon)=['\"]?(\w+)['\"]?\s*",
+            expression,
+        ):
+            setattr(self, match_group[0], match_group[1])
+
+    def compare(self, xml: ET.Element) -> bool:
+        """Check if given XML element matches the date-spec expression."""
+        if any(
+            [
+                xml.get("hours") != self.hours,
+                xml.get("monthdays") != self.monthdays,
+                xml.get("weekdays") != self.weekdays,
+                xml.get("yeardays") != self.yeardays,
+                xml.get("months") != self.months,
+                xml.get("weeks") != self.weeks,
+                xml.get("years") != self.years,
+                xml.get("weekyears") != self.weekyears,
+                xml.get("moon") != self.moon,
+            ]
+        ):
+            return False
+        return True
+
+class RscLocationRuleExpression:
+    operation: str
+    attribute: str = None
+    value: str = None
+    start: str = None
+    end: str = None
+    date_spec: DateSpec = None
+
+    def __init__(self, expression: str):
+        # expression: date gt|lt <date>
+        exp_parsed = re.search(r"^date\s+(gt|lt)\s+(.*)$", expression)
+        if exp_parsed:
+            self.operation = exp_parsed.group(1)
+            self.start = exp_parsed.group(2)
+            return
+
+        # expression: date in_range <date> to duration <duration>
+        exp_parsed = re.search(r"^date\s+(in_range)\s+(.*)\s+to\s+duration\s+(.*)$", expression)
+        if exp_parsed:
+            self.operation = exp_parsed.group(1)
+            self.start = exp_parsed.group(2)
+            self.date_spec = DateSpec(exp_parsed.group(3))
+            return
+
+        # expression: date in_range <date> to <date>
+        exp_parsed = re.search(r"^date\s+(in_range)\s+(.*)\s+to\s+(.*)$", expression)
+        if exp_parsed:
+            self.operation = exp_parsed.group(1)
+            self.start = exp_parsed.group(2)
+            self.end = exp_parsed.group(3)
+            return
+
+        # expression: date-spec <duration>
+        exp_parsed = re.search(r"^date-spec\s+(.*)$", expression)
+        if exp_parsed:
+            self.operation = "date-spec"
+            self.date_spec = DateSpec(exp_parsed.group(1))
+            return
+
+        # expression: defined|not_defined <node attribute>
+        exp_parsed = re.search(r"^(defined|not_defined)\s+(.*)$", expression)
+        if exp_parsed:
+            self.attribute = exp_parsed.group(2)
+            self.operation = exp_parsed.group(1)
+            return
+
+        # expression: <node attribute> lt|gt|lte|gte|eq|ne <value>
+        exp_parsed = re.search(r"^(.*)\s+(lt|gt|lte|gte|eq|ne)\s+(.*)$", expression)
+        if exp_parsed:
+            self.attribute = exp_parsed.group(1)
+            self.operation = exp_parsed.group(2)
+            self.value = exp_parsed.group(3)
+            return
+
+    def compare(self, xml: ET.Element) -> bool:
+        """Check if given XML element matches the rule expression."""
+        date_spec = xml.find("duration") or xml.find("date_spec")
+        if any(
+            [
+                xml.get("operation") != self.operation,
+                xml.get("attribute") != self.attribute,
+                xml.get("value") != self.value,
+                xml.get("start") != self.start,
+                xml.get("end") != self.end,
+                date_spec is None and self.date_spec is not None,
+                date_spec is not None and self.date_spec is None,
+            ]
+        ):
+            return False
+
+        if date_spec is None and self.date_spec is None:
+            return True
+
+        if date_spec and self.date_spec:
+            return self.date_spec.compare(date_spec)
+
+        return True
+
+def compare_rule_to_element(rule_string: str, xml_rule: ET.Element) -> bool:
+    boolean_op = xml_rule.attrib.get("boolean-op")
+    if boolean_op and " %s " % boolean_op not in rule_string:
+        return False
+
+    expression_list = re.split(r"\s+or\s+|\s+and\s+", rule_string)
+    rule_parsed_list = [
+        RscLocationRuleExpression(expression)
+        for expression in expression_list
+    ]
+    xml_expressions = xml_rule.findall("expression") or  xml_rule.findall("date_expression")
+
+    if len(rule_parsed_list) != len(xml_expressions):
+        return False
+
+    if all(
+        exp.compare(xml_expressions[idx])
+        for idx, exp in enumerate(rule_parsed_list)
+    ):
+        return True
+    return False
 
 def run_module():
     module = AnsibleModule(
         argument_spec=dict(
             state=dict(default="present", choices=['present', 'absent']),
             resource=dict(required=True),
-            node_name=dict(required=True),
+            node_name=dict(required=False),
+            rule=dict(required=False),
+            constraint_id=dict(required=False),
             score=dict(required=False, default="INFINITY"),
             cib_file=dict(required=False),
         ),
-        supports_check_mode=True
+        supports_check_mode=True,
+        mutually_exclusive=[("node_name", "rule")],
+        required_one_of=[("node_name", "rule")],
+        required_by={"rule": "constraint_id"},
     )
 
     state = module.params['state']
     resource = module.params['resource']
     node_name = module.params['node_name']
+    rule = module.params['rule']
+    constraint_id = module.params['constraint_id']
     score = module.params['score']
     cib_file = module.params['cib_file']
 
@@ -138,12 +281,19 @@ def run_module():
     constraints = current_cib_root.findall("./configuration/constraints/rsc_location")
     for constr in constraints:
         # constraint is considered found if we see resource and node as got through attributes
-        if constr.attrib.get('rsc') == resource and constr.attrib.get('node') == node_name:
+        constr_node = constr.attrib.get('node')
+        if constr.attrib.get("rsc") == resource and (
+            constr.attrib.get("id") == constraint_id
+            or (constr_node is not None and constr_node == node_name)
+        ):
             constraint = constr
             break
 
     # location constraint creation command
-    cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
+    if node_name is not None:
+        cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
+    elif rule is not None:
+        cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s rule constraint-id=%(constraint_id)s score=%(score)s %(rule)s' % module.params
 
     # location constriaint deleter command
     if constraint is not None:
@@ -161,7 +311,16 @@ def run_module():
 
     elif state == 'present' and constraint is not None:
         # constraint should be present and we see similar constraint so lets check if it is same
-        if score != constraint.attrib.get('score'):
+        if rule is not None:
+            constr_rule = constraint.find('rule')
+            if not constr_rule:
+                constraint_match = False
+            else:
+                constraint_match = compare_rule_to_element(rule, constr_rule) and score == constr_rule.attrib.get("score")
+        else:
+            constraint_match = score == constraint.attrib.get('score')
+
+        if not constraint_match:
             result['changed'] = True
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd_delete)

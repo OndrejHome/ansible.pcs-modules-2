@@ -38,7 +38,22 @@ options:
   node_name:
     description:
       - node name for constraints
-    required: true
+      - One of C(rule) or C(node_name) is required
+      - Mutually exclusive with C(rule)
+    required: false
+    type: str
+  rule:
+    description:
+      - rule expression for constraints
+      - One of C(rule) or C(node_name) is required
+      - Mutually exclusive with C(node_name)
+    required: false
+    type: str
+  constraint_id:
+    description:
+      - unique name for the constraint
+      - Required by I(rule)
+    required: false
     type: str
   score:
     description:
@@ -81,6 +96,27 @@ EXAMPLES = '''
     node_name: 'node2'
     score: '-INFINITY'
     state: 'absent'
+
+- name: moving resources due to connectivity changes (needs ocf:pacemaker:ping resource)
+  pcs_constraint_location:
+    resource: 'resA'
+    constraint_id: 'resA_ping_check'
+    rule: 'pingd lt 1 or not_defined pingd'
+    score: '-INFINITY'
+
+- name: resource resA prefers to run on the current node during working hours
+  pcs_constraint_location:
+    resource: 'resA'
+    constraint_id: 'resA_working_hours'
+    rule: 'date-spec hours="9-16" weekdays="1-5"'
+    score: 'INFINITY'
+
+- name: resource resA prefers to run on the current node since 2022
+  pcs_constraint_location:
+    resource: 'resA'
+    constraint_id: 'resA_since_2022'
+    rule: 'date gt 2022-01-01'
+    score: 'INFINITY'
 '''
 
 import os.path

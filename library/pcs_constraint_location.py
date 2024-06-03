@@ -101,7 +101,7 @@ EXAMPLES = '''
   pcs_constraint_location:
     resource: 'resA'
     constraint_id: 'resA_ping_check'
-    rule: 'pingd lt 1 or not_defined pingd'
+    rule: 'not_defined pingd or pingd lt 1'
     score: '-INFINITY'
 
 - name: resource resA prefers to run on the current node during working hours

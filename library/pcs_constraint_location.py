@@ -127,24 +127,24 @@ from distutils.spawn import find_executable
 from ansible.module_utils.basic import AnsibleModule
 
 class DateSpec:
-    hours: str | int = None
-    monthdays: str | int = None
-    weekdays: str | int = None
-    yeardays: str | int = None
-    months: str | int = None
-    weeks: str | int = None
-    years: str | int = None
-    weekyears: str = None
-    moon: str | int = None
+    hours = None
+    monthdays = None
+    weekdays = None
+    yeardays = None
+    months = None
+    weeks = None
+    years = None
+    weekyears = None
+    moon = None
 
-    def __init__(self, expression: str):
+    def __init__(self, expression):
         for match_group in re.findall(
             r"(hours|monthdays|weekdays|yeardays|months|weeks|years|weekyears|moon)=['\"]?(\w+)['\"]?\s*",
             expression,
         ):
             setattr(self, match_group[0], match_group[1])
 
-    def compare(self, xml: ET.Element) -> bool:
+    def compare(self, xml):
         """Check if given XML element matches the date-spec expression."""
         if any(
             [
@@ -163,14 +163,14 @@ class DateSpec:
         return True
 
 class RscLocationRuleExpression:
-    operation: str
-    attribute: str = None
-    value: str = None
-    start: str = None
-    end: str = None
-    date_spec: DateSpec = None
+    operation = None
+    attribute = None
+    value = None
+    start = None
+    end = None
+    date_spec = None
 
-    def __init__(self, expression: str):
+    def __init__(self, expression):
         # expression: date gt|lt <date>
         exp_parsed = re.search(r"^date\s+(gt|lt)\s+(.*)$", expression)
         if exp_parsed:
@@ -216,7 +216,7 @@ class RscLocationRuleExpression:
             self.value = exp_parsed.group(3)
             return
 
-    def compare(self, xml: ET.Element) -> bool:
+    def compare(self, xml):
         """Check if given XML element matches the rule expression."""
         date_spec = xml.find("duration") or xml.find("date_spec")
         if any(
@@ -240,7 +240,7 @@ class RscLocationRuleExpression:
 
         return True
 
-def compare_rule_to_element(rule_string: str, xml_rule: ET.Element) -> bool:
+def compare_rule_to_element(rule_string, xml_rule):
     boolean_op = xml_rule.attrib.get("boolean-op")
     if boolean_op and " %s " % boolean_op not in rule_string:
         return False

@@ -139,7 +139,7 @@ class DateSpec:
 
     def __init__(self, expression):
         for match_group in re.findall(
-            r"(hours|monthdays|weekdays|yeardays|months|weeks|years|weekyears|moon)=['\"]?(\w+)['\"]?\s*",
+            r"(hours|monthdays|weekdays|yeardays|months|weeks|years|weekyears|moon)=['\"]?(\S+)['\"]?\s*",
             expression,
         ):
             setattr(self, match_group[0], match_group[1])

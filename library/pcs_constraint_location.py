@@ -139,7 +139,7 @@ class DateSpec:
 
     def __init__(self, expression):
         for match_group in re.findall(
-            r"(hours|monthdays|weekdays|yeardays|months|weeks|years|weekyears|moon)=['\"]?(\S+)['\"]?\s*",
+            r"(hours|monthdays|weekdays|yeardays|months|weeks|years|weekyears|moon)=['\"]?([\w-]+)['\"]?\s*",
             expression,
         ):
             setattr(self, match_group[0], match_group[1])
@@ -197,7 +197,7 @@ class RscLocationRuleExpression:
         # expression: date-spec <duration>
         exp_parsed = re.search(r"^date-spec\s+(.*)$", expression)
         if exp_parsed:
-            self.operation = "date-spec"
+            self.operation = "date_spec"
             self.date_spec = DateSpec(exp_parsed.group(1))
             return
 

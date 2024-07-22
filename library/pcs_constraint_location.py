@@ -251,7 +251,7 @@ class RscLocationRuleExpression:
         if date_spec is None and self.date_spec is None:
             return True
 
-        if date_spec and self.date_spec:
+        if date_spec is not None and self.date_spec is not None:
             return self.date_spec.compare(date_spec)
 
         return True

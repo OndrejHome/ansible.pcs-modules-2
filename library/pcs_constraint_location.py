@@ -162,6 +162,22 @@ class DateSpec:
             return False
         return True
 
+    def __repr__(self) -> str:
+        return (
+            "DateSpec(hours:%s, weekdays:%s, monthdays:%s, yeardays:%s, months:%s, weeks:%s, years:%s, weekyears:%s, moon:%s)"
+            % (
+                self.hours,
+                self.weekdays,
+                self.monthdays,
+                self.yeardays,
+                self.months,
+                self.weeks,
+                self.years,
+                self.weekyears,
+                self.moon,
+            )
+        )
+
 class RscLocationRuleExpression:
     operation = None
     attribute = None
@@ -239,6 +255,19 @@ class RscLocationRuleExpression:
             return self.date_spec.compare(date_spec)
 
         return True
+
+    def __repr__(self) -> str:
+        return (
+            "RscLocationRuleExpression(operation:%s, attribute:%s, value:%s, start:%s, end:%s, date_spec:%s)"
+            % (
+                self.operation,
+                self.attribute,
+                self.value,
+                self.start,
+                self.end,
+                self.date_spec,
+            )
+        )
 
 def compare_rule_to_element(rule_string, xml_rule):
     boolean_op = xml_rule.attrib.get("boolean-op")

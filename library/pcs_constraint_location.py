@@ -162,7 +162,7 @@ class DateSpec:
             return False
         return True
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return (
             "DateSpec(hours:%s, weekdays:%s, monthdays:%s, yeardays:%s, months:%s, weeks:%s, years:%s, weekyears:%s, moon:%s)"
             % (
@@ -256,7 +256,7 @@ class RscLocationRuleExpression:
 
         return True
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return (
             "RscLocationRuleExpression(operation:%s, attribute:%s, value:%s, start:%s, end:%s, date_spec:%s)"
             % (

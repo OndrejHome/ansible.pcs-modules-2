@@ -70,6 +70,7 @@ options:
 notes:
    - tested on CentOS 7.6, Fedora 29
    - specifying non-existing node_name for Fedora 29 produces error. Use only existing node names.
+   - note that 'date in_range ... to duration ...' is not idempotent
 '''
 
 EXAMPLES = '''

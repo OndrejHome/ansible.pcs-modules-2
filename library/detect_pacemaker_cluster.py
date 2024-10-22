@@ -48,17 +48,25 @@ def run_module():
             nodes = re.compile(r"node\s*\{([^}]+)\}", re.M + re.S)
             nodes_list = nodes.findall(corosync_conf.read())
             node_list_set = set()
+            nodename_list_set = set()
             if len(nodes_list) > 0:
                 n_name = re.compile(r"ring0_addr\s*:\s*([\w.-]+)\s*", re.M)
+                n_nodename = re.compile(r"name\s*:\s*([\w.-]+)\s*", re.M)
                 for node in nodes_list:
                     n_name2 = None
                     n_name2 = n_name.search(node)
+                    n_nodename2 = None
+                    n_nodename2 = n_nodename.search(node)
                     if n_name2:
                         node_name = n_name2.group(1)
                         node_list_set.add(node_name.rstrip())
+                    if n_nodename2:
+                        nodename_name = n_nodename2.group(1)
+                        nodename_list_set.add(nodename_name.rstrip())
 
             result['ansible_facts'] = {}
             result['ansible_facts']['pacemaker_detected_cluster_nodes'] = node_list_set
+            result['ansible_facts']['pacemaker_detected_cluster_nodenames'] = nodename_list_set
             result['ansible_facts']['pacemaker_cluster_present'] = True
         except IOError as e:
             result['ansible_facts'] = {}

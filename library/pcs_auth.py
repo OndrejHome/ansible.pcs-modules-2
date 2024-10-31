@@ -114,13 +114,16 @@ def run_module():
         # load JSON tokens
         tokens_data = json.load(tokens_file)
         result['tokens_data'] = tokens_data['tokens']
-    if os.path.isfile('/var/lib/pcsd/known-hosts') and pcs_version in ['0.10', '.0.11']:
+    if os.path.isfile('/var/lib/pcsd/known-hosts') and pcs_version in ['0.10', '.0.11', '0.12']:
         tokens_file = open('/var/lib/pcsd/known-hosts', 'r+')
         # load JSON tokens
         tokens_data = json.load(tokens_file)
         result['tokens_data'] = tokens_data['known_hosts']
 
-    rc, out, err = module.run_command('pcs cluster pcsd-status %(node_name)s' % module.params)
+    if pcs_version in ['0.9', '0.10', '.0.11']:
+        rc, out, err = module.run_command('pcs cluster pcsd-status %(node_name)s' % module.params)
+    elif pcs_version in ['0.12']:
+        rc, out, err = module.run_command('pcs pcsd status %(node_name)s' % module.params)
 
     if state == 'present' and rc != 0:
         # WARNING: this will also consider nodes to which we cannot connect as unauthorized
@@ -128,10 +131,10 @@ def run_module():
         if not module.check_mode:
             if pcs_version == '0.9':
                 cmd_auth = 'pcs cluster auth %(node_name)s -u %(username)s -p %(password)s --local' % module.params
-            elif pcs_version in ['0.10', '0.11']:
+            elif pcs_version in ['0.10', '0.11', '0.12']:
                 cmd_auth = 'pcs host auth %(node_name)s -u %(username)s -p %(password)s' % module.params
             else:
-                module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10 and 0.11 are supported.")
+                module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
             rc, out, err = module.run_command(cmd_auth)
             if rc == 0:
                 module.exit_json(**result)
@@ -140,7 +143,7 @@ def run_module():
 
     elif (state == 'absent' and tokens_data and (
             (pcs_version == '0.9' and node_name in tokens_data['tokens']) or
-            (pcs_version in ['0.10', '0.11'] and node_name in tokens_data['known_hosts'])
+            (pcs_version in ['0.10', '0.11', '0.12'] and node_name in tokens_data['known_hosts'])
     )):
         result['changed'] = True
         if not module.check_mode:
@@ -152,7 +155,7 @@ def run_module():
                 tokens_file.seek(0)
                 json.dump(tokens_data, tokens_file, indent=4)
                 tokens_file.truncate()
-            elif pcs_version in ['0.10', '0.11']:
+            elif pcs_version in ['0.10', '0.11', '0.12']:
                 cmd_deauth = 'pcs host deauth %(node_name)s' % module.params
                 rc, out, err = module.run_command(cmd_deauth)
                 if rc == 0:

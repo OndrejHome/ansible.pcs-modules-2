@@ -1,14 +1,15 @@
 pcs-modules-2
 =============
 
-Ansible modules for configuring pacemaker cluster on CentOS/RHEL 6/7/8 and Fedora 31/32/33/34/35 systems.
+Ansible modules for configuring pacemaker cluster on CentOS/RHEL 6/7/8/9 and Fedora 31/32/33/34/35/36/37/38/39/40 systems.
 
 PCS versions supported:
 - pcs-0.9
 - pcs-0.10
-- pcs-0.11 (initial support)
+- pcs-0.11
+- pcs-0.12 (initial support)
 
-If you are looking for a role that will configure a basic pacemaker cluster on CentOS/RHEL 6/7/8 or Fedora 31/32/33/34/35 systems, then check out the [ondrejhome.ha-cluster-pacemaker](https://github.com/OndrejHome/ansible.ha-cluster-pacemaker) role that uses the pcs-modules-2.
+If you are looking for a role that will configure a basic pacemaker cluster on CentOS/RHEL 6/7/8/9 or Fedora 31/32/33/34/35/36/37/38/39/40 systems, then check out the [ondrejhome.ha-cluster-pacemaker](https://github.com/OndrejHome/ansible.ha-cluster-pacemaker) role that uses the pcs-modules-2.
 
 Note that modules manipulating with cluster configuration such as `pcs_resource`, `pcs_constraint_*`, `pcs_property`, `pcs_resource_defaults` and `pcs_stonith_level` should be run only from one of the cluster nodes in cluster by using either `run_once: True` or `delegate_to:` options.
 

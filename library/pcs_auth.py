@@ -114,13 +114,13 @@ def run_module():
         # load JSON tokens
         tokens_data = json.load(tokens_file)
         result['tokens_data'] = tokens_data['tokens']
-    if os.path.isfile('/var/lib/pcsd/known-hosts') and pcs_version in ['0.10', '.0.11', '0.12']:
+    if os.path.isfile('/var/lib/pcsd/known-hosts') and pcs_version in ['0.10', '0.11', '0.12']:
         tokens_file = open('/var/lib/pcsd/known-hosts', 'r+')
         # load JSON tokens
         tokens_data = json.load(tokens_file)
         result['tokens_data'] = tokens_data['known_hosts']
 
-    if pcs_version in ['0.9', '0.10', '.0.11']:
+    if pcs_version in ['0.9', '0.10', '0.11']:
         rc, out, err = module.run_command('pcs cluster pcsd-status %(node_name)s' % module.params)
     elif pcs_version in ['0.12']:
         rc, out, err = module.run_command('pcs pcsd status %(node_name)s' % module.params)

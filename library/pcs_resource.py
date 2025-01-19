@@ -179,11 +179,12 @@ def compare_resources(module, res1, res2):
     n1_file = open(n1_tmp_path, 'w')
     n2_file = open(n2_tmp_path, 'w')
     # dump the XML resource definitions into temporary files
+    old_stdout = sys.stdout
     sys.stdout = n1_file
     ET.dump(res1)
     sys.stdout = n2_file
     ET.dump(res2)
-    sys.stdout = sys.__stdout__
+    sys.stdout = old_stdout
     # close files
     n1_file.close()
     n2_file.close()

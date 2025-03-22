@@ -67,10 +67,18 @@ options:
       - "This module requires the file to already contain cluster configuration."
     required: false
     type: str
+  resource_discovery:
+    description:
+      - "resource-discovery mode,"
+      - "requires both I(node_name) and I(constraint_id) to be specified"
+    type: str
+    required: false
+    choices: ['always', 'never', 'exclusive']
 notes:
    - tested on CentOS 7.6, Fedora 29
    - specifying non-existing node_name for Fedora 29 produces error. Use only existing node names.
    - note that 'date in_range ... to duration ...' is not idempotent
+   - presence/absence of resource_discovery option is not considered when checking if constrain should be changed
 '''
 
 EXAMPLES = '''
@@ -118,6 +126,14 @@ EXAMPLES = '''
     constraint_id: 'resA_since_2022'
     rule: 'date gt 2022-01-01'
     score: 'INFINITY'
+
+- name: disable resource discovery of resource resA on node node2
+  pcs_constraint_location:
+    resource: 'resA'
+    constraint_id: 'resA_nodediscover_node2'
+    node_name: 'node2'
+    score: '-INFINITY'
+    resource_discovery: 'never'
 '''
 
 import os.path
@@ -302,11 +318,12 @@ def run_module():
             constraint_id=dict(required=False),
             score=dict(required=False, default="INFINITY"),
             cib_file=dict(required=False),
+            resource_discovery=dict(required=False,choices=['always', 'never', 'exclusive'])
         ),
         supports_check_mode=True,
         mutually_exclusive=[("node_name", "rule")],
         required_one_of=[("node_name", "rule")],
-        required_by={"rule": "constraint_id"},
+        required_by={"rule": "constraint_id","resource_discovery": ("constraint_id", "node_name")},
     )
 
     state = module.params['state']
@@ -316,6 +333,7 @@ def run_module():
     constraint_id = module.params['constraint_id']
     score = module.params['score']
     cib_file = module.params['cib_file']
+    resource_discovery = module.params['resource_discovery']
 
     result = {}
 
@@ -342,6 +360,9 @@ def run_module():
         else:
             module.fail_json(msg='Failed to load cluster configuration', out=out, error=err)
 
+    # check if non-default resource_discovery was requested
+    module.params['resource_discovery_string'] = 'resource-discovery='+resource_discovery if (resource_discovery is not None) else ''
+
     # try to find the constraint we have defined
     constraint = None
     constraints = current_cib_root.findall("./configuration/constraints/rsc_location")
@@ -357,9 +378,12 @@ def run_module():
 
     # location constraint creation command
     if node_name is not None:
-        cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
+        if resource_discovery is not None:
+            cmd_create = 'pcs %(cib_file_param)s constraint location add %(constraint_id)s %(resource)s %(node_name)s %(score)s %(resource_discovery_string)s' % module.params
+        else:
+            cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
     elif rule is not None:
-        cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s rule constraint-id=%(constraint_id)s score=%(score)s %(rule)s' % module.params
+        cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s rule %(resource_discovery_string)s constraint-id=%(constraint_id)s score=%(score)s %(rule)s' % module.params
 
     # location constriaint deleter command
     if constraint is not None:

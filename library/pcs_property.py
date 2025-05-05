@@ -127,7 +127,14 @@ def run_module():
     if node is not None:
         rc, out, err = module.run_command('pcs %(cib_file_param)s node attribute' % module.params)
     else:
-        rc, out, err = module.run_command('pcs %(cib_file_param)s property show' % module.params)
+        if pcs_version in ['0.9']:
+            cmd = 'pcs %(cib_file_param)s property show' % module.params
+        elif pcs_version in ['0.10', '0.11', '0.12']:
+            cmd = 'pcs %(cib_file_param)s property config' % module.params
+        else:
+            module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
+
+        rc, out, err = module.run_command(cmd)
     properties = {}
     if rc == 0:
         # indicator in which part of parsing we are
@@ -146,8 +153,6 @@ def run_module():
                     delimiter = ':'
                 elif pcs_version in ['0.11', '0.12']:
                     delimiter = '='
-                else:
-                    module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
 
                 # when identifier of section is not preset we are at the property
                 tmp = row.lstrip().split(delimiter)

@@ -116,6 +116,13 @@ def run_module():
     if cib_file is not None and os.path.isfile(cib_file):
         module.params['cib_file_param'] = '-f ' + cib_file
 
+    # get the pcs major.minor version
+    rc, out, err = module.run_command('pcs --version')
+    if rc == 0:
+        pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
+    else:
+        module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
+
     # get property list from running cluster
     if node is not None:
         rc, out, err = module.run_command('pcs %(cib_file_param)s node attribute' % module.params)
@@ -135,8 +142,15 @@ def run_module():
             elif row == 'Node Attributes:':
                 property_type = 'node'
             else:
+                if pcs_version in ['0.9', '0.10']:
+                    delimiter = ':'
+                elif pcs_version in ['0.11', '0.12']:
+                    delimiter = '='
+                else:
+                    module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
+
                 # when identifier of section is not preset we are at the property
-                tmp = row.lstrip().split(':')
+                tmp = row.lstrip().split(delimiter)
                 if property_type == 'cluster':
                     properties['cluster'][tmp[0]] = tmp[1].lstrip()
                 elif property_type == 'node':

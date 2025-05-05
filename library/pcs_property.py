@@ -137,7 +137,7 @@ def run_module():
         # we are stripping last line as they doesn't contain properties
         for row in out.split('\n')[0:-1]:
             # based on row we see the section to either cluster or node properties
-            if row == 'Cluster Properties:':
+            if row.startswith('Cluster Properties:'):
                 property_type = 'cluster'
             elif row == 'Node Attributes:':
                 property_type = 'node'

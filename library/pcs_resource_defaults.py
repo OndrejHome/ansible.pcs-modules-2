@@ -57,6 +57,8 @@ notes:
    - tested on CentOS 7.9 - pcs 0.9.169
    - tested on CentOS 8.2 - pcs 0.10.4
    - tested on Fedora 32 - pcs 0.10.7
+   - tested on Fedora 41 - pcs 0.11.9
+   - tested on Fedora 42 - pcs 0.12.0
 '''
 
 EXAMPLES = '''
@@ -111,6 +113,13 @@ def run_module():
     if find_executable('pcs') is None:
         module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
+    # get the pcs major.minor version
+    rc, out, err = module.run_command('pcs --version')
+    if rc == 0:
+        pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
+    else:
+        module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
+
     if state == 'present' and value is None:
         module.fail_json(msg="To set a defaults 'value' must be specified.")
 
@@ -146,8 +155,12 @@ def run_module():
         if not module.check_mode:
             if defaults_type == 'meta':
                 cmd_set = 'pcs %(cib_file_param)s resource defaults %(name)s=%(value)s' % module.params
+                if pcs_version == '0.12':
+                    cmd_set = 'pcs %(cib_file_param)s resource defaults update %(name)s=%(value)s' % module.params
             elif defaults_type == 'op':
                 cmd_set = 'pcs %(cib_file_param)s resource op defaults %(name)s=%(value)s' % module.params
+                if pcs_version == '0.12':
+                    cmd_set = 'pcs %(cib_file_param)s resource op defaults update %(name)s=%(value)s' % module.params
             else:
                 module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
             rc, out, err = module.run_command(cmd_set)
@@ -162,8 +175,12 @@ def run_module():
         if not module.check_mode:
             if defaults_type == 'meta':
                 cmd_unset = 'pcs %(cib_file_param)s resource defaults %(name)s=' % module.params
+                if pcs_version == '0.12':
+                    cmd_unset = 'pcs %(cib_file_param)s resource defaults update %(name)s=' % module.params
             elif defaults_type == 'op':
                 cmd_unset = 'pcs %(cib_file_param)s resource op defaults %(name)s=' % module.params
+                if pcs_version == '0.12':
+                    cmd_unset = 'pcs %(cib_file_param)s resource op defaults update %(name)s=' % module.params
             else:
                 module.fail_json(msg="'" + defaults_type + "' is not implemented by this module")
             rc, out, err = module.run_command(cmd_unset)

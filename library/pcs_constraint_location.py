@@ -340,6 +340,13 @@ def run_module():
     if find_executable('pcs') is None:
         module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
+    # get the pcs major.minor version
+    rc, out, err = module.run_command('pcs --version')
+    if rc == 0:
+        pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
+    else:
+        module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
+
     module.params['cib_file_param'] = ''
     if cib_file is not None:
         # use cib_file if specified
@@ -376,10 +383,14 @@ def run_module():
             constraint = constr
             break
 
+    # PCS 0.12 deprecation change - Specifying score as a standalone value is deprecated in favor of score=value.
+    module.params['score_prefix'] = ''
+    if pcs_version == '0.12':
+        module.params['score_prefix'] = 'score='
     # location constraint creation command
     if node_name is not None:
         if resource_discovery is not None:
-            cmd_create = 'pcs %(cib_file_param)s constraint location add %(constraint_id)s %(resource)s %(node_name)s %(score)s %(resource_discovery_string)s' % module.params
+            cmd_create = 'pcs %(cib_file_param)s constraint location add %(constraint_id)s %(resource)s %(node_name)s %(score_prefix)s%(score)s %(resource_discovery_string)s' % module.params
         else:
             cmd_create = 'pcs %(cib_file_param)s constraint location %(resource)s prefers %(node_name)s=%(score)s' % module.params
     elif rule is not None:

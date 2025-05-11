@@ -83,6 +83,12 @@ EXAMPLES = '''
     resource1: 'resA'
     resource2: 'resB'
 
+- name: prefer resA and resB to run on same node with colocation score 100
+  pcs_constraint_colocation:
+    resource1: 'resA'
+    resource2: 'resB'
+    score: 100
+
 - name: prefer resA to run on same node as Master resource of resB-master resource
   pcs_constraint_colocation:
     resource1: 'resA'

@@ -4,6 +4,7 @@
 # Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
 
 from __future__ import absolute_import, division, print_function
+from packaging import version
 __metaclass__ = type
 
 
@@ -117,19 +118,17 @@ def run_module():
         module.params['cib_file_param'] = '-f ' + cib_file
 
     # get the pcs major.minor version
-    rc, out, err = module.run_command('pcs --version')
-    if rc == 0:
-        pcs_version = out.split('.')[0] + '.' + out.split('.')[1]
-    else:
+    rc, pcs_version, err = module.run_command('pcs --version')
+    if rc != 0:
         module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
     # get property list from running cluster
     if node is not None:
         rc, out, err = module.run_command('pcs %(cib_file_param)s node attribute' % module.params)
     else:
-        if pcs_version in ['0.9']:
+        if version.parse(pcs_version) >= version.parse("0.9.0") and version.parse(pcs_version) < version.parse("0.10.0"):
             cmd = 'pcs %(cib_file_param)s property show' % module.params
-        elif pcs_version in ['0.10', '0.11', '0.12']:
+        elif version.parse(pcs_version) >= version.parse("0.10.0") and version.parse(pcs_version) < version.parse("0.13.0"):
             cmd = 'pcs %(cib_file_param)s property config' % module.params
         else:
             module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
@@ -141,6 +140,7 @@ def run_module():
         property_type = None
         properties['cluster'] = {}
         properties['node'] = {}
+        delimiter = '=' if version.parse(pcs_version) > version.parse("0.11.5") else ':'
         # we are stripping last line as they doesn't contain properties
         for row in out.split('\n')[0:-1]:
             # based on row we see the section to either cluster or node properties
@@ -149,11 +149,6 @@ def run_module():
             elif row == 'Node Attributes:':
                 property_type = 'node'
             else:
-                if pcs_version in ['0.9', '0.10']:
-                    delimiter = ':'
-                elif pcs_version in ['0.11', '0.12']:
-                    delimiter = '='
-
                 # when identifier of section is not preset we are at the property
                 tmp = row.lstrip().split(delimiter)
                 if property_type == 'cluster':

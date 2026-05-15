@@ -111,7 +111,6 @@ EXAMPLES = '''
 
 import os.path
 import xml.etree.ElementTree as ET
-from distutils.spawn import find_executable
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -141,7 +140,8 @@ def run_module():
 
     result = {}
 
-    if find_executable('pcs') is None:
+    pcs_path = module.get_bin_path('pcs', required=False)
+    if pcs_path is None:
         module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
     # get the pcs major.minor version

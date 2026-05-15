@@ -151,7 +151,6 @@ import os.path
 import xml.etree.ElementTree as ET
 import tempfile
 import re
-from distutils.spawn import find_executable
 from ansible.module_utils.basic import AnsibleModule
 
 # determine if we have 'to_native' function that we can use for 'ansible --diff' output
@@ -299,7 +298,8 @@ def run_module():
         module.fail_json(msg='When creating cluster resource you must specify the resource_type')
     result = {}
 
-    if find_executable('pcs') is None:
+    pcs_path = module.get_bin_path('pcs', required=False)
+    if pcs_path is None:
         module.fail_json(msg="'pcs' executable not found. Install 'pcs'.")
 
     # get the pcs major.minor version

@@ -163,7 +163,7 @@ def run_module():
                 else:
                     module.fail_json(msg="Failed to de-authenticate node using command '" + cmd_deauth + "'", output=out, error=err)
             else:
-                module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9 and 0.10 are supported.")
+                module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
 
     else:
         result['changed'] = False

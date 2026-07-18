@@ -152,7 +152,7 @@ def run_module():
         module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
     # influence support was introduced in 0.11
-    if pcs_version == '0.11':
+    if pcs_version in ['0.11', '0.12']:
         influence = module.params['influence'] = 'influence=true' if module.params['influence'] else 'influence=false'
     elif not module.params['influence']:
         # influence=False (not supported for pcs<0.11)
@@ -250,7 +250,7 @@ def run_module():
 
     elif state == 'present' and constraint is not None:
         # constraint should be present, lets see if it has different score from requested, if yes, then we do update
-        if constraint.attrib.get('score', 'INFINITY') != score or (pcs_version == '0.11' and 'influence=' + constraint.attrib.get('influence', 'true') != influence):
+        if constraint.attrib.get('score', 'INFINITY') != score or (pcs_version in ['0.11', '0.12'] and 'influence=' + constraint.attrib.get('influence', 'true') != influence):
             result['changed'] = True
             if not module.check_mode:
                 rc, out, err = module.run_command(cmd_delete)

@@ -114,8 +114,8 @@ def run_module():
     else:
         module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
-    if pcs_version != '0.10':
-        module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only version 0.10 is supported.")
+    if pcs_version not in ['0.10', '0.11', '0.12']:
+        module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.10, 0.11 and 0.12 are supported.")
 
     # EL 7 configuration file
     corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf')

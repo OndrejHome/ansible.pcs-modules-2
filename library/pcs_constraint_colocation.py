@@ -106,7 +106,7 @@ EXAMPLES = '''
   pcs_constraint_colocation:
     resource1: 'resA'
     resource2: 'resB'
-    influenece: false
+    influence: false
 '''
 
 import os.path

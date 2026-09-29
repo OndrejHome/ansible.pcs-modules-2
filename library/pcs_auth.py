@@ -34,6 +34,12 @@ options:
       - hostname of node for authentication
     required: true
     type: str
+  node_addr:
+    description:
+      - "address used to connect to pcsd on the node instead of resolving 'node_name' (pcs-0.10 and newer)"
+      - "node is authenticated again when it is known to pcs with a different address"
+    required: false
+    type: str
   username:
     description:
       - "username of 'cluster user' for cluster authentication"
@@ -57,6 +63,12 @@ EXAMPLES = '''
 - name: Authorize node 'n1' with default user 'hacluster' and password 'testtest'
   pcs_auth:
     node_name: 'n1'
+    password: 'testtest'
+
+- name: Authorize node 'n1' and connect to its pcsd using IP address
+  pcs_auth:
+    node_name: 'n1'
+    node_addr: '192.168.1.11'
     password: 'testtest'
 
 - name: authorize all nodes in ansible play to each other
@@ -84,6 +96,7 @@ def run_module():
         argument_spec=dict(
             state=dict(default="present", choices=['present', 'absent']),
             node_name=dict(required=True),
+            node_addr=dict(required=False),
             username=dict(required=False, default="hacluster"),
             password=dict(required=False, no_log=True)
         ),
@@ -92,6 +105,7 @@ def run_module():
 
     state = module.params['state']
     node_name = module.params['node_name']
+    node_addr = module.params['node_addr']
 
     if state == 'present' and not module.params['password']:
         module.fail_json(msg="Missing password parameter needed for authorizing the node")
@@ -109,6 +123,9 @@ def run_module():
     else:
         module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
 
+    if node_addr and pcs_version == '0.9':
+        module.fail_json(msg="using node_addr is not supported with pcs 0.9")
+
     if os.path.isfile('/var/lib/pcsd/tokens') and pcs_version == '0.9':
         tokens_file = open('/var/lib/pcsd/tokens', 'r+')
         # load JSON tokens
@@ -120,19 +137,26 @@ def run_module():
         tokens_data = json.load(tokens_file)
         result['tokens_data'] = tokens_data['known_hosts']
 
+    # authenticate again if pcs knows the node with a different address than requested
+    node_addr_differs = False
+    if node_addr and state == 'present':
+        known_node = result.get('tokens_data', {}).get(node_name, {})
+        node_addr_differs = [dest.get('addr') for dest in known_node.get('dest_list', [])] != [node_addr]
+
     if pcs_version in ['0.9', '0.10', '0.11']:
         rc, out, err = module.run_command('pcs cluster pcsd-status %(node_name)s' % module.params)
     elif pcs_version in ['0.12']:
         rc, out, err = module.run_command('pcs pcsd status %(node_name)s' % module.params)
 
-    if state == 'present' and rc != 0:
+    if state == 'present' and (rc != 0 or node_addr_differs):
         # WARNING: this will also consider nodes to which we cannot connect as unauthorized
         result['changed'] = True
         if not module.check_mode:
             if pcs_version == '0.9':
                 cmd_auth = 'pcs cluster auth %(node_name)s -u %(username)s -p %(password)s --local' % module.params
             elif pcs_version in ['0.10', '0.11', '0.12']:
-                cmd_auth = 'pcs host auth %(node_name)s -u %(username)s -p %(password)s' % module.params
+                module.params['node_addr_param'] = '' if not node_addr else 'addr=%(node_addr)s' % module.params
+                cmd_auth = 'pcs host auth %(node_name)s %(node_addr_param)s -u %(username)s -p %(password)s' % module.params
             else:
                 module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
             rc, out, err = module.run_command(cmd_auth)

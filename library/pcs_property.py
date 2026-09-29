@@ -4,7 +4,6 @@
 # Apache License v2.0 (see LICENSE-APACHE2.txt or http://www.apache.org/licenses/LICENSE-2.0)
 
 from __future__ import absolute_import, division, print_function
-from packaging import version
 __metaclass__ = type
 
 
@@ -118,20 +117,25 @@ def run_module():
         module.params['cib_file_param'] = '-f ' + cib_file
 
     # get the pcs major.minor version
-    rc, pcs_version, err = module.run_command('pcs --version')
+    rc, out, err = module.run_command('pcs --version')
     if rc != 0:
-        module.fail_json(msg="pcs --version exited with non-zero exit code (" + rc + "): " + out + err)
+        module.fail_json(msg="pcs --version exited with non-zero exit code (" + str(rc) + "): " + out + err)
+    # compare versions as tuples of integers, e.g. '0.11.10' -> (0, 11, 10)
+    pcs_version_match = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", out.strip())
+    if pcs_version_match is None:
+        module.fail_json(msg="unable to parse pcs version from '" + out.strip() + "'")
+    pcs_version = tuple(int(num) for num in pcs_version_match.groups('0'))
 
     # get property list from running cluster
     if node is not None:
         rc, out, err = module.run_command('pcs %(cib_file_param)s node attribute' % module.params)
     else:
-        if version.parse(pcs_version) >= version.parse("0.9.0") and version.parse(pcs_version) < version.parse("0.10.0"):
+        if (0, 9, 0) <= pcs_version < (0, 10, 0):
             cmd = 'pcs %(cib_file_param)s property show' % module.params
-        elif version.parse(pcs_version) >= version.parse("0.10.0") and version.parse(pcs_version) < version.parse("0.13.0"):
+        elif (0, 10, 0) <= pcs_version < (0, 13, 0):
             cmd = 'pcs %(cib_file_param)s property config' % module.params
         else:
-            module.fail_json(msg="unsupported version of pcs (" + pcs_version + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
+            module.fail_json(msg="unsupported version of pcs (" + out.strip() + "). Only versions 0.9, 0.10, 0.11 and 0.12 are supported.")
 
         rc, out, err = module.run_command(cmd)
     properties = {}
@@ -140,7 +144,7 @@ def run_module():
         property_type = None
         properties['cluster'] = {}
         properties['node'] = {}
-        delimiter = '=' if version.parse(pcs_version) > version.parse("0.11.5") else ':'
+        delimiter = '=' if pcs_version > (0, 11, 5) else ':'
         # we are stripping last line as they doesn't contain properties
         for row in out.split('\n')[0:-1]:
             # based on row we see the section to either cluster or node properties

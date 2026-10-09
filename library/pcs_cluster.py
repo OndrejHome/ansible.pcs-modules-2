@@ -32,6 +32,9 @@ options:
   node_list:
     description:
       - space separated list of nodes in cluster
+      - "each node can be followed by one or more 'addr=<address>' items (pcs-0.10 and newer), the first address
+        is used as ring0/link0 address, the next ones as addresses of redundant links, the node name is kept as
+        the cluster node name"
     required: false
     type: str
   cluster_name:
@@ -112,6 +115,15 @@ EXAMPLES = '''
     transport_options: link_mode=passive link linknumber=0 transport=udp link_priority=1 link linknumber=1 transport=udp link_priority=2'
   run_once: True
 
+- name: Create cluster with node names and IP addresses for corosync links (pcs-0.10 and newer)
+  pcs_cluster:
+    cluster_name: 'test-cluster'
+    node_list: >
+      node1 addr=192.168.1.11 addr=192.168.2.11
+      node2 addr=192.168.1.12 addr=192.168.2.12
+    state: 'present'
+  run_once: True
+
 - name: Add new nodes to existing cluster
   pcs_cluster:
     node_list: 'existing-node-1 existing-node-2 new-node-3 new-node-4'
@@ -179,15 +191,31 @@ def run_module():
     corosync_conf_exists = os.path.isfile('/etc/corosync/corosync.conf')
 
     node_list_set = set()
+    node_list_names = []
     node_list_set_detailed = {}
+    node_list_addrs = {}
     if node_list is not None:
         # process node list (use only first node name (ring0)
         for item in node_list.split():
+            if item.startswith('addr='):
+                # explicit link address of the preceding node ('node addr=ADDR0 addr=ADDR1')
+                if not node_list_names or node_list_names[-1] not in node_list_addrs:
+                    module.fail_json(msg="'" + item + "' in node_list must follow a node name without ',' addresses")
+                node_list_addrs[node_list_names[-1]].append(item[len('addr='):])
+                continue
+            node_list_names.append(item.split(',')[0])
             node_list_set.add(item.split(',')[0])
             node_list_set_detailed[item.split(',')[0]] = {'ring0': item.split(',')[0]}
             if len(item.split(',')) > 1:
                 for ring_num in range(len(item.split(',')) - 1):
                     node_list_set_detailed[item.split(',')[0]]['ring' + str(ring_num + 1)] = item.split(',')[ring_num + 1]
+            else:
+                node_list_addrs[item] = []
+        # explicit addresses replace the node name as ring0 address
+        for node, addrs in node_list_addrs.items():
+            if addrs:
+                node_list_set_detailed[node] = dict(('ring' + str(num), addr) for num, addr in enumerate(addrs))
+    node_list_has_addr = any(node_list_addrs.values())
 
     detected_node_list_set = set()
     if corosync_conf_exists:
@@ -204,10 +232,11 @@ def run_module():
             detected_node_list_set = set()
             exit
 
-        # detect ring_0 address that will become node_name
+        # detect node name, or ring_0 address that will become node_name when name is not set
+        node_name_field = re.compile(r"^\s*name\s*:\s*(\S+)\s*$", re.M)
         node_name = re.compile(r"ring0_addr\s*:\s*([\w.-]+)\s*", re.M)
         for node in re_nodes_list:
-            n_name = node_name.search(node)
+            n_name = node_name_field.search(node) or node_name.search(node)
             if n_name is None:
                 # skip node if we cannot determine it's ring0 address
                 continue
@@ -228,6 +257,8 @@ def run_module():
             # if no transport_options are specified used empty string
             if (module.params['transport_options']):
                 module.fail_json(msg="using transport_options is not supported with pcs 0.9")
+            if node_list_has_addr:
+                module.fail_json(msg="using 'addr=' in node_list is not supported with pcs 0.9")
             module.params['token_param'] = '' if (not module.params['token']) else '--token %(token)s' % module.params
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else '--transport %(transport)s' % module.params
             cmd = 'pcs cluster setup --name %(cluster_name)s %(node_list)s %(token_param)s %(transport_param)s' % module.params
@@ -236,10 +267,10 @@ def run_module():
                 module.fail_json(msg="using option transport_option must not be used without option transport")
             module.params['token_param'] = '' if (not module.params['token']) else 'totem token=%(token)s' % module.params
             module.params['transport_param'] = '' if (module.params['transport'] == 'default') else 'transport %(transport)s' % module.params
-            if ',' in module.params['node_list']:
+            if ',' in module.params['node_list'] or node_list_has_addr:
                 # rewrite node_list to conform to pcs-0.10 format with multiple links
                 module.params['node_list'] = ''
-                for node in node_list_set:
+                for node in node_list_names:
                     module.params['node_list'] += node + ' '
                     for link_number in range(len(node_list_set_detailed[node])):
                         module.params['node_list'] += 'addr=' + node_list_set_detailed[node]['ring' + str(link_number)] + ' '
@@ -260,9 +291,11 @@ def run_module():
         if allowed_node_changes == 'add':
             result['nodes_to_add'] = node_list_set - detected_node_list_set
             for node in (node_list_set - detected_node_list_set):
+                if node_list_has_addr and pcs_version == '0.9':
+                    module.fail_json(msg="using 'addr=' in node_list is not supported with pcs 0.9")
                 if 'ring1' in node_list_set_detailed[node] and pcs_version == '0.9':
                     cmd = 'pcs cluster node add ' + node + ',' + node_list_set_detailed[node]['ring1']
-                elif len(node_list_set_detailed[node]) > 1 and pcs_version in ['0.10', '0.11','0.12']:
+                elif node_list_set_detailed[node] != {'ring0': node} and pcs_version in ['0.10', '0.11','0.12']:
                     cmd = 'pcs cluster node add ' + node + ' '
                     for link_number in range(len(node_list_set_detailed[node])):
                         cmd += 'addr=' + node_list_set_detailed[node]['ring' + str(link_number)] + ' '
